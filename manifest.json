@@ -1,0 +1,60 @@
+{
+  "name": "DRISHTI \u2014 CSECC",
+  "short_name": "DRISHTI",
+  "description": "Decision Review, Intelligence, Supervision, Harmonisation, Tracking & Insights \u2014 Chief Secretary Executive Command Centre, Government of Sikkim.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#1A3A5C",
+  "background_color": "#1A3A5C",
+  "lang": "en-IN",
+  "dir": "ltr",
+  "categories": [
+    "government",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "Seal_of_Sikkim.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "Seal_of_Sikkim.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Open the DRISHTI executive dashboard",
+      "url": "./index.html#dashboard",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' rx='12' fill='%231A3A5C'/%3E%3Crect x='12' y='12' width='28' height='28' rx='4' fill='%23C9A84C'/%3E%3Crect x='56' y='12' width='28' height='28' rx='4' fill='%23C9A84C'/%3E%3Crect x='12' y='56' width='28' height='28' rx='4' fill='%23C9A84C'/%3E%3Crect x='56' y='56' width='28' height='28' rx='4' fill='%23C9A84C'/%3E%3C/svg%3E",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "short_name": "Tasks",
+      "description": "View all task directives",
+      "url": "./index.html#tasks",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' rx='12' fill='%231A3A5C'/%3E%3Cpath d='M20 48 L40 68 L76 32' stroke='%23C9A84C' stroke-width='8' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
