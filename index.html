@@ -2316,6 +2316,8 @@
         store.session = sessionData;
         // sessionStorage only — never localStorage for auth tokens
         sessionStorage.setItem(CONFIG.SESSION_KEY, JSON.stringify(sessionData));
+        // Bridge CSRF token to the key security.js reads from
+        if (result.csrfToken) sessionStorage.setItem('drishti_csrf_token', result.csrfToken);
         return true;
       },
 
@@ -2343,11 +2345,14 @@
         try {
           const parsed = JSON.parse(raw);
           store.session = parsed;
+          // Restore CSRF token to the key security.js reads from
+          if (parsed.csrfToken) sessionStorage.setItem('drishti_csrf_token', parsed.csrfToken);
           // Validate token server-side
           const result = await api('validateSession', {});
           if (!result?.valid) {
             store.session = null;
             sessionStorage.removeItem(CONFIG.SESSION_KEY);
+            sessionStorage.removeItem('drishti_csrf_token');
             return false;
           }
           return true;
