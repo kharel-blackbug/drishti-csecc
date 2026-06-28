@@ -501,12 +501,12 @@ ul, ol { list-style: none; }
 }
 
 .sidebar-section-label {
-  color: #A3A3A3;
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
+  color: #9CA3AF;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding: 16px 14px 6px;
+  padding: 18px 16px 7px;
   white-space: nowrap;
   overflow: hidden;
   transition: opacity var(--transition);
@@ -517,14 +517,14 @@ ul, ol { list-style: none; }
 .sidebar-item {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: 8px 12px;
-  margin: 1px 6px;
-  color: #525252;
-  font-size: 13px;
+  gap: 10px;
+  padding: 9px 14px;
+  margin: 2px 8px;
+  color: #404040;
+  font-size: 13.5px;
   font-weight: 500;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 7px;
   border: none;
   background: none;
   width: calc(100% - 16px);
@@ -551,21 +551,22 @@ ul, ol { list-style: none; }
 }
 
 .sidebar-item.active {
-  color: #92400E;
-  background: rgba(201,168,76,0.1);
+  color: #78350F;
+  background: rgba(201,168,76,0.13);
   font-weight: 600;
-  padding-left: 13px;
+  padding-left: 14px;
+  box-shadow: inset 0 1px 0 rgba(201,168,76,0.1);
 }
 
 .sidebar-item.active::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: #C9A84C;
-  border-radius: 0 2px 2px 0;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  background: linear-gradient(180deg, #D4A843, #C9A84C);
+  border-radius: 0 3px 3px 0;
 }
 
 [data-theme="dark"] .sidebar-item.active {
@@ -583,15 +584,17 @@ ul, ol { list-style: none; }
 }
 
 .sidebar-item-icon {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.75;
+  opacity: 0.65;
   transition: opacity var(--transition);
 }
+
+.sidebar-item-icon svg { width: 18px; height: 18px; }
 
 .sidebar-item:hover .sidebar-item-icon {
   opacity: 1;
@@ -2668,10 +2671,16 @@ ul, ol { list-style: none; }
      * @returns {Promise<*>} Resolved data on success, throws Error on failure.
      */
     async function api(action, payload = {}) {
+      // SEC-016: inject csrfToken directly into body — eliminates the
+      // window.fetch monkey-patch race condition in security.js under concurrent calls.
+      const csrfToken = (typeof getCSRFToken === 'function' ? getCSRFToken() : '')
+                     || store.session?.csrfToken
+                     || '';
       const body = {
         action,
         payload,
         sessionToken: store.session?.sessionToken || '',
+        csrfToken,
       };
 
       let response;
