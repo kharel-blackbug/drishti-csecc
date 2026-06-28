@@ -1411,7 +1411,7 @@ async function renderDepartmentsView() {
     </div>
   </div>`;
 
-  _on('adm-save-depts-btn','click', _saveDeptChanges);
+  _on('adm-save-depts-btn','click', function() { _saveDeptChanges(); });
 
   try {
     if (!_departments.length) _departments = await window.api('getDepartments',{});
@@ -1488,7 +1488,9 @@ async function renderDepartmentsView() {
 }
 
 async function _saveDeptChanges(deptCode) {
-  // If called with a specific deptCode, save only that department; otherwise save all changed rows.
+  // Guard: if called from a click event, the browser passes a MouseEvent as deptCode — ignore it
+  if (deptCode && typeof deptCode !== 'string') deptCode = null;
+  // If called with a specific deptCode string, save only that department; otherwise save all changed rows.
   const btn = _el('adm-save-depts-btn');
   if (btn) { btn.disabled=true; btn.textContent='Saving…'; }
   let saved=0, errors=0;
