@@ -3432,8 +3432,13 @@ ul, ol { list-style: none; }
           errEl.classList.add('visible');
           return;
         }
-        if (newPw.length < 8) {
-          errEl.textContent = 'New password must be at least 8 characters.';
+        if (newPw.length < 12) {
+          errEl.textContent = 'New password must be at least 12 characters.';
+          errEl.classList.add('visible');
+          return;
+        }
+        if (!/[A-Z]/.test(newPw) || !/[a-z]/.test(newPw) || !/[0-9]/.test(newPw) || !/[^A-Za-z0-9]/.test(newPw)) {
+          errEl.textContent = 'Password must include uppercase, lowercase, a number, and a special character (e.g. @, #, $, !).';
           errEl.classList.add('visible');
           return;
         }
@@ -3445,7 +3450,12 @@ ul, ol { list-style: none; }
 
         ui.setLoading(btn, true);
         try {
-          await auth.changePassword(oldPw, newPw);
+          const result = await auth.changePassword(oldPw, newPw);
+          if (result && result.success === false) {
+            errEl.textContent = result.message || 'Password change failed.';
+            errEl.classList.add('visible');
+            return;
+          }
           document.getElementById('change-password-overlay').classList.remove('open');
           ['cp-old','cp-new','cp-confirm'].forEach(f => document.getElementById(f).value = '');
           ui.toast('Password Changed', 'Your password has been updated successfully.', 'success');
