@@ -3234,17 +3234,19 @@ ul, ol { list-style: none; }
       document.getElementById('app').classList.remove('active');
     }
 
-    function showApp() {
+    function showApp(goToDashboard = false) {
+      // Always start at dashboard on fresh login; preserve route on page refresh
+      if (goToDashboard) window.location.hash = 'dashboard';
       document.getElementById('login-view').classList.remove('active');
       document.getElementById('app').classList.add('active');
       // Expose globals needed by dashboard.js and other modules
-      window.api        = api;
-      window.store      = store;
-      window.auth       = auth;
-      window.ui         = ui;
-      window.router     = router;
-      window.loadTasks  = loadTasks;      // exposed so admin.js can refresh after task creation
-      window.loadDashboard = loadDashboard; // exposed so other modules can refresh KPIs
+      window.api           = api;
+      window.store         = store;
+      window.auth          = auth;
+      window.ui            = ui;
+      window.router        = router;
+      window.loadTasks     = loadTasks;
+      window.loadDashboard = loadDashboard;
       populateUserUI();
       applyRoleGates();
       router.resolve();
@@ -3332,7 +3334,7 @@ ul, ol { list-style: none; }
         ui.setLoading(btn, true);
         try {
           await auth.login(email, password);
-          showApp();
+          showApp(true); // fresh login → always start at dashboard
         } catch (err) {
           errEl.textContent = err.message;
           errEl.classList.add('visible');
