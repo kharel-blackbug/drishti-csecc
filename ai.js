@@ -840,6 +840,8 @@ function _loadMarked() {
     const s = document.createElement('script');
     s.src = MARKED_CDN;
     s.async = true;
+    s.integrity = 'sha512-dMe5JXNQZ6VKsWG/m41lGIcCq+2dZKflFhVrEOeQ0A5SBGDgRhWgWp0XCWUNJ1cYWkMIFqhKLJ3qQpxJ1XlQ==';
+    s.crossOrigin = 'anonymous';
     s.onload  = function() {
       // Configure marked for safe government-appropriate rendering
       if (window.marked && window.marked.setOptions) {
@@ -865,11 +867,16 @@ function _loadMarked() {
 async function _renderMarkdown(text) {
   try {
     const marked = await _loadMarked();
-    if (marked && typeof marked.parse === 'function') {
-      return marked.parse(String(text || ''));
-    }
-    if (marked && typeof marked === 'function') {
-      return marked(String(text || ''));
+    // Parse markdown then strip dangerous tags — AI output is trusted but sanitised
+    const raw = marked && typeof marked.parse === 'function'
+      ? marked.parse(String(text || ''))
+      : (typeof marked === 'function' ? marked(String(text || '')) : null);
+    if (raw) {
+      // Basic sanitisation: remove <script>, on* attrs, javascript: hrefs
+      return raw
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, '')
+        .replace(/href\s*=\s*["']javascript:[^"']*["']/gi, 'href="#"');
     }
   } catch (e) { /* fall through */ }
   // Plain-text fallback: escape and preserve newlines

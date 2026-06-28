@@ -3131,7 +3131,10 @@ ul, ol { list-style: none; }
 
       try {
         const result = await api('getTasks', { ...taskState.filters, page: taskState.page, pageSize: taskState.pageSize });
-        if (!result) return;
+        if (!result) {
+          tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-state-title">Session expired</div><div class="empty-state-desc">Please refresh the page and log in again.</div></div></td></tr>`;
+          return;
+        }
         taskState.totalPages = result.totalPages || 1;
         renderTasksTable(result.tasks || []);
         updatePaginationUI(result);
@@ -3509,17 +3512,20 @@ ul, ol { list-style: none; }
         // admin.js, dept.js, and ai.js handle their own views via drishti:viewchange
         const _isAdmin = _role === 'Super Admin';
         if (view === 'dashboard' && !_isDept && !_isAdmin) loadDashboard();
-        if (view === 'tasks'     && !_isDept && !_isAdmin) loadTasks();
+        // Super Admin can also view tasks — admin.js has no tasks handler, so call loadTasks() for all non-dept roles
+        if (view === 'tasks'     && !_isDept) loadTasks();
         if (view === 'departments' && !_isAdmin)            loadDepartments();
       });
 
       // ── Task table actions ───────────────────────────────────────────
       document.getElementById('refresh-dashboard').addEventListener('click', loadDashboard);
       document.getElementById('new-task-btn')?.addEventListener('click', () => {
-        ui.toast('New Task', 'Full task creation form builds in Module 6.', 'info');
+        if (typeof window.openCreateTaskModal === 'function') window.openCreateTaskModal();
+        else ui.toast('Access Denied', 'Task creation requires Super Admin or Chief Secretary role.', 'warning');
       });
       document.getElementById('create-task-btn')?.addEventListener('click', () => {
-        ui.toast('New Task', 'Full task creation form builds in Module 6.', 'info');
+        if (typeof window.openCreateTaskModal === 'function') window.openCreateTaskModal();
+        else ui.toast('Access Denied', 'Task creation requires Super Admin or Chief Secretary role.', 'warning');
       });
 
       // Pagination

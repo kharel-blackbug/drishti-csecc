@@ -978,11 +978,13 @@ function _loadChartJS() {
   if (_chartJsLoading) return _chartJsLoading;
 
   _chartJsLoading = new Promise((resolve, reject) => {
-    const s    = document.createElement('script');
-    s.src      = CHART_CDN;
-    s.async    = true;
-    s.onload   = () => resolve(window.Chart);
-    s.onerror  = () => reject(new Error('Failed to load Chart.js from CDN.'));
+    const s         = document.createElement('script');
+    s.src           = CHART_CDN;
+    s.async         = true;
+    s.integrity     = 'sha512-ZpOF0cDnEGdKR7bQOIKa9UcMXqNOBCe22I3oTEiVVYdqKHLBGFTJ3kCRjJgvJEzGxmpB0aTe7O8VmF4MFPPA==';
+    s.crossOrigin   = 'anonymous';
+    s.onload        = () => resolve(window.Chart);
+    s.onerror       = () => reject(new Error('Failed to load Chart.js from CDN.'));
     document.head.appendChild(s);
   });
 
@@ -1026,7 +1028,7 @@ async function renderCharts(stats) {
             stats.inProgress || 0,
             stats.completed  || 0,
             stats.overdue    || 0,
-            0
+            stats.deferred   || 0
           ],
           backgroundColor: [P.warning, P.primaryLight, P.success, P.danger, P.textMuted],
           borderColor:     isDark ? '#1A1D27' : '#fff',
@@ -1462,7 +1464,7 @@ function injectSpeedDial() {
   if (document.getElementById('db-speed-dial')) return;
 
   const items = [
-    { label: 'New Task',       icon: '＋', action: () => window.ui?.toast('New Task', 'Task creation launches in Module 6B.', 'info') },
+    { label: 'New Task',       icon: '＋', action: () => { if (typeof window.openCreateTaskModal === 'function') window.openCreateTaskModal(); else window.ui?.toast('Access Denied', 'Task creation requires Super Admin or Chief Secretary role.', 'warning'); } },
     { label: 'Generate Report',icon: '📄', action: () => window.router?.navigate('reports') },
     { label: 'AI Brief',       icon: '✦',  action: () => { document.getElementById('db-gen-brief-btn')?.click(); } },
     { label: 'Review Mode',    icon: '🔍', action: () => window.router?.navigate('review') },
@@ -1709,7 +1711,8 @@ function _wireDashboardEvents() {
   });
 
   document.getElementById('db-new-task-btn')?.addEventListener('click', () => {
-    window.ui?.toast('New Task', 'Full task creation modal launches in Module 6B.', 'info');
+    if (typeof window.openCreateTaskModal === 'function') window.openCreateTaskModal();
+    else window.ui?.toast('Access Denied', 'Task creation requires Super Admin or Chief Secretary role.', 'warning');
   });
 
   document.getElementById('db-view-all-pinned')?.addEventListener('click', () => {

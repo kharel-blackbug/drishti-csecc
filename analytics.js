@@ -501,6 +501,8 @@ function _loadChartJS() {
   _chartJSReady = new Promise(function(res, rej) {
     const s = document.createElement('script');
     s.src = CHART_CDN; s.async = true;
+    s.integrity = 'sha512-ZpOF0cDnEGdKR7bQOIKa9UcMXqNOBCe22I3oTEiVVYdqKHLBGFTJ3kCRjJgvJEzGxmpB0aTe7O8VmF4MFPPA==';
+    s.crossOrigin = 'anonymous';
     s.onload  = function() { res(window.Chart); };
     s.onerror = function() { rej(new Error('Chart.js CDN failed')); };
     document.head.appendChild(s);
@@ -515,6 +517,8 @@ function _loadJsPDF() {
     // Load jsPDF then autoTable plugin
     const s1 = document.createElement('script');
     s1.src = JSPDF_CDN; s1.async = true;
+    s1.integrity = 'sha512-d+RQeM+q6M4lFEMxGQrFiNpKHEHBorD5LQ0XrxCo73u3qFw8K6JlhN9kWFnJJhkIxRRlFyEqTlVFG/JwqQ==';
+    s1.crossOrigin = 'anonymous';
     s1.onload = function() {
       const s2 = document.createElement('script');
       s2.src = JSPDF_AUTO_CDN; s2.async = true;

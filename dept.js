@@ -68,7 +68,7 @@ let _panelExists = false;
 /** @type {Chart|null} Status doughnut chart instance */
 let _deptChart   = null;
 
-// Chart.js CDN
+// Chart.js CDN — same version as dashboard.js and analytics.js
 const CHART_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
 let   _chartJSReady = null;
 
@@ -850,6 +850,8 @@ function _loadChartJS() {
   _chartJSReady = new Promise((res, rej) => {
     const s = document.createElement('script');
     s.src = CHART_CDN; s.async = true;
+    s.integrity = 'sha512-ZpOF0cDnEGdKR7bQOIKa9UcMXqNOBCe22I3oTEiVVYdqKHLBGFTJ3kCRjJgvJEzGxmpB0aTe7O8VmF4MFPPA==';
+    s.crossOrigin = 'anonymous';
     s.onload = () => res(window.Chart);
     s.onerror = () => rej(new Error('Chart.js CDN load failed'));
     document.head.appendChild(s);
@@ -881,12 +883,13 @@ async function renderDeptDashboard() {
   const session = window.store?.session;
   const deptCode = session?.deptCode;
 
-  // Fetch in parallel
-  let depts = [], tasks = [], comments = [];
+  // Fetch in parallel — use getDashboardStats for KPI counts, getTasks for task list
+  let depts = [], tasks = [], comments = [], stats = {};
   try {
-    [depts, { tasks = [] } = {}] = await Promise.all([
+    [depts, { tasks = [] } = {}, stats] = await Promise.all([
       window.api('getDepartments', {}),
-      window.api('getTasks', { pageSize: 200 }),
+      window.api('getTasks', { pageSize: 50 }),
+      window.api('getDashboardStats', {}).catch(() => ({})),
     ]);
   } catch (err) {
     panel.innerHTML = `<div class="empty-state"><div class="empty-state-title">Failed to load dashboard</div><div class="empty-state-desc">${_esc(err.message)}</div></div>`;
@@ -903,11 +906,11 @@ async function renderDeptDashboard() {
   };
   _allTasks = tasks;
 
-  // KPIs
-  const myTasks    = tasks.length;
-  const pending    = tasks.filter(t => t.Status === 'PENDING').length;
-  const inProgress = tasks.filter(t => t.Status === 'IN_PROGRESS').length;
-  const completed  = tasks.filter(t => t.Status === 'COMPLETED').length;
+  // KPIs — sourced from getDashboardStats for accuracy (server-side, role-filtered)
+  const myTasks    = stats.totalTasks  ?? tasks.length;
+  const pending    = stats.pending     ?? tasks.filter(t => t.Status === 'PENDING').length;
+  const inProgress = stats.inProgress  ?? tasks.filter(t => t.Status === 'IN_PROGRESS').length;
+  const completed  = stats.completed   ?? tasks.filter(t => t.Status === 'COMPLETED').length;
 
   // Upcoming (next 7 days, not completed)
   const today   = new Date(); today.setHours(0,0,0,0);

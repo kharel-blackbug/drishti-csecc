@@ -971,9 +971,9 @@ function injectReviewOverlay() {
           <span class="rv-action-icon">📌</span>
           <span class="rv-action-label">Pin Task</span>
         </button>
-        <button class="rv-action-btn" id="rv-qa-email" aria-label="Email the assigned department">
+        <button class="rv-action-btn" id="rv-qa-email" aria-label="Post a direction to the assigned department">
           <span class="rv-action-icon">✉</span>
-          <span class="rv-action-label">Email Dept</span>
+          <span class="rv-action-label">Post Direction</span>
         </button>
       </div>
 
@@ -1012,8 +1012,8 @@ function injectEmailModal() {
   m.innerHTML = `
   <div class="rv-email-card">
     <div class="modal-header">
-      <div class="modal-title" id="rv-email-title">Email Department</div>
-      <button class="icon-btn" id="rv-email-close" aria-label="Close email composer">
+      <div class="modal-title" id="rv-email-title">Post Direction to Department</div>
+      <button class="icon-btn" id="rv-email-close" aria-label="Close direction composer">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -1033,10 +1033,10 @@ function injectEmailModal() {
       <div id="rv-email-error" class="form-error" role="alert"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" id="rv-email-cancel" aria-label="Cancel email">Cancel</button>
-      <button class="btn btn-primary" id="rv-email-send-btn" aria-label="Send email">
+      <button class="btn btn-secondary" id="rv-email-cancel" aria-label="Cancel">Cancel</button>
+      <button class="btn btn-primary" id="rv-email-send-btn" aria-label="Post direction">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        Send Email
+        Post Direction
       </button>
     </div>
   </div>`;
@@ -1306,13 +1306,20 @@ function _renderAttachments() {
     return;
   }
 
+  // Safety helper: only allow Google Drive / Docs URLs to prevent open-redirect attacks
+  function _safeDriveUrl(url) {
+    if (!url || typeof url !== 'string') return '#';
+    return url.startsWith('https://drive.google.com/') || url.startsWith('https://docs.google.com/') ? url : '#';
+  }
+
   grid.innerHTML = _attachments.map(a => {
     const ext      = (a.FileName || '').split('.').pop().toLowerCase();
     const isImage  = ['png','jpg','jpeg','gif','webp'].includes(ext);
     const isPDF    = ext === 'pdf';
     const fileIcon = _fileIcon(ext);
+    const safeUrl  = _safeDriveUrl(a.DriveViewURL);
     const preview  = isImage
-      ? `<img src="${_esc(a.DriveViewURL)}" alt="${_esc(a.FileName)}" loading="lazy" />`
+      ? `<img src="${_esc(safeUrl)}" alt="${_esc(a.FileName)}" loading="lazy" />`
       : isPDF
         ? `<span class="rv-file-icon">📄</span>`
         : `<span class="rv-file-icon">${fileIcon}</span>`;
@@ -1324,8 +1331,8 @@ function _renderAttachments() {
       <div class="rv-file-meta">${_esc(a.FileType.split('/').pop().toUpperCase())} · ${_fmtBytes(parseInt(a.FileSizeBytes,10)||0)}</div>
       <div class="rv-file-meta">↑ ${_esc(a.UploadedBy || '—')} · ${_fmtDate(a.UploadedAt)}</div>
       <div class="rv-file-actions">
-        <a href="${_esc(a.DriveViewURL)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center;" aria-label="View file ${_esc(a.FileName)}">View</a>
-        <a href="${_esc(a.DriveViewURL)}" download="${_esc(a.FileName)}" class="btn btn-ghost btn-sm" aria-label="Download file ${_esc(a.FileName)}">DL</a>
+        <a href="${_esc(safeUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center;" aria-label="View file ${_esc(a.FileName)}">View</a>
+        <a href="${_esc(safeUrl)}" download="${_esc(a.FileName)}" class="btn btn-ghost btn-sm" aria-label="Download file ${_esc(a.FileName)}">DL</a>
       </div>
     </div>`;
   }).join('');
@@ -1762,17 +1769,17 @@ async function _sendEmailToDepth() {
   if (!body)    { errEl.textContent = 'Message body is required.'; errEl.classList.add('visible'); return; }
 
   sendBtn.disabled   = true;
-  sendBtn.textContent = 'Sending…';
+  sendBtn.textContent = 'Posting…';
 
   try {
-    // Post a Direction comment that embeds the email context
+    // Post a Direction comment that embeds the direction context
     await window.api('addComment', {
       taskID:   _task.TaskID,
-      content:  `EMAIL SENT TO DEPARTMENT:\nSubject: ${subject}\n\n${body}`,
+      content:  `DIRECTION TO DEPARTMENT:\nSubject: ${subject}\n\n${body}`,
       category: 'Direction',
     });
     _closeEmailModal();
-    window.ui?.toast('Email Sent', 'Direction email posted to department.', 'success');
+    window.ui?.toast('Direction Posted', 'Direction posted to department.', 'success');
     // Reload comments
     const updated = await window.api('getComments', { taskID: _task.TaskID });
     _comments = updated || _comments;
@@ -1782,7 +1789,7 @@ async function _sendEmailToDepth() {
     errEl.classList.add('visible');
   } finally {
     sendBtn.disabled    = false;
-    sendBtn.innerHTML   = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send Email';
+    sendBtn.innerHTML   = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Post Direction';
   }
 }
 

@@ -569,7 +569,7 @@ async function renderAdminDashboard() {
     const [users, tasks, audit] = await Promise.all([
       window.api('getUsers',    {}).catch(() => []),
       window.api('getTasks',    { pageSize: 1 }).catch(() => ({ totalCount: 0 })),
-      window.api('getAuditLog', {}).catch(() => []),
+      window.api('getAuditLog', { pageSize: 20 }).catch(() => []),
     ]);
     _users     = users || [];
     _auditRows = audit || [];
@@ -880,7 +880,7 @@ function _wireCreateTaskModal() {
   _on('adm-view-new-task','click', () => {
     const id = _el('adm-new-task-id')?.textContent;
     closeCreateTaskModal();
-    if (id && id !== '—') window.router?.navigate('tasks');
+    if (id && id !== '—') window.router?.navigate('task-detail', { taskID: id });
   });
 }
 
@@ -929,7 +929,7 @@ function _updateSelectedChips() {
   wrap.innerHTML = [..._selectedDepts].map(code => {
     const dept = _allDeptsList.find(d => d.deptCode === code);
     const name = dept ? dept.deptShortName || code : code;
-    return `<span class="adm-dept-chip">${_esc(name)}<button onclick="_removeDept('${code}')" aria-label="Remove ${_esc(name)}">✕</button></span>`;
+    return `<span class="adm-dept-chip">${_esc(name)}<button class="dept-chip-remove" data-code="${_escHtml(code)}" aria-label="Remove ${_escHtml(name)}">✕</button></span>`;
   }).join('');
 }
 
@@ -940,6 +940,12 @@ window._removeDept = function(code) {
   _updateSelectedChips();
   _updatePrimaryDeptSelect();
 };
+
+// Delegated listener for dept chip remove buttons (avoids inline onclick injection — SEC-005)
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('.dept-chip-remove');
+  if (btn) _removeDept(btn.dataset.code);
+});
 
 function _updatePrimaryDeptSelect() {
   const sel = _el('ct-primary-dept');
@@ -1158,7 +1164,7 @@ function _renderUsersTable() {
     <td>
       <div style="display:flex;gap:var(--space-2);">
         <button class="btn btn-ghost btn-sm" onclick="_editUser('${u.userID}')" aria-label="Edit user ${_esc(u.fullName||u.email)}">Edit</button>
-        <button class="btn btn-ghost btn-sm" onclick="_resetPassword('${u.userID}','${_esc(u.email)}')" aria-label="Reset password for ${_esc(u.email)}">Reset PW</button>
+        <button class="btn btn-ghost btn-sm" onclick="_resetPassword('${u.userID}')" aria-label="Reset password for ${_esc(u.email)}">Reset PW</button>
         <button class="btn btn-ghost btn-sm" style="color:var(--color-${u.isActive==='TRUE'?'danger':'success'});" onclick="_toggleUserActive('${u.userID}','${u.isActive}')" aria-label="${u.isActive==='TRUE'?'Deactivate':'Activate'} user">${u.isActive==='TRUE'?'Deactivate':'Activate'}</button>
       </div>
     </td>
@@ -1171,17 +1177,18 @@ window._editUser = function(userID) {
   if (user) _openUserModal(user);
 };
 
-window._resetPassword = async function(userID, email) {
-  const confirmed = await window.ui?.confirm(
-    'Reset Password',
-    `Send a temporary password to ${email}? The user will be required to change it on next login.`,
-    'Reset Password'
-  );
-  if (!confirmed) return;
+window._resetPassword = async function(userID) {
+  if (!confirm('Reset this user\'s password? A temporary password will be generated and shown once.')) return;
   try {
-    // Generate temp password server-side (handled by updateUser + email notification)
-    await window.api('updateUser', { userID, isActive: true });
-    window.ui?.toast('Password Reset', `Temporary password sent to ${email}.`, 'success');
+    const result = await window.api('resetUserPassword', { userID });
+    if (result && result.temporaryPassword) {
+      const pwDisplay = result.temporaryPassword;
+      navigator.clipboard?.writeText(pwDisplay).catch(() => {});
+      window.ui?.toast('Password Reset — Copy Now', 'Temp password: ' + pwDisplay, 'success', 12000);
+    } else {
+      window.ui?.toast('Password Reset', 'Password reset completed.', 'success');
+    }
+    await _loadUsers();
   } catch (err) {
     window.ui?.toast('Error', err.message, 'error');
   }
@@ -1476,20 +1483,33 @@ async function renderDepartmentsView() {
   }
 }
 
-async function _saveDeptChanges() {
+async function _saveDeptChanges(deptCode) {
+  // If called with a specific deptCode, save only that department; otherwise save all changed rows.
   const btn = _el('adm-save-depts-btn');
   if (btn) { btn.disabled=true; btn.textContent='Saving…'; }
   let saved=0, errors=0;
 
-  for (const d of _departments) {
-    const hodName  = _el(`hod-name-${d.deptCode}`)?.value.trim()  || '';
-    const hodEmail = _el(`hod-email-${d.deptCode}`)?.value.trim() || '';
-    if (hodName !== (d.hodName||'') || hodEmail !== (d.hodEmail||'')) {
+  const toSave = deptCode
+    ? _departments.filter(function(d) { return d.deptCode === deptCode || d.DeptCode === deptCode; })
+    : _departments;
+
+  for (const d of toSave) {
+    const code     = d.deptCode || d.DeptCode;
+    const hodName  = _el(`hod-name-${code}`)?.value?.trim()  ?? (d.hodName  || d.HODName  || '');
+    const hodEmail = _el(`hod-email-${code}`)?.value?.trim() ?? (d.hodEmail || d.HODEmail || '');
+    const deptName = _el(`dept-name-${code}`)?.value?.trim() ?? (d.deptName || d.DeptName || '');
+
+    if (hodName !== (d.hodName||d.HODName||'') || hodEmail !== (d.hodEmail||d.HODEmail||'')) {
+      const updates = {
+        deptCode:  code,
+        HODName:   hodName,
+        HODEmail:  hodEmail,
+        DeptName:  deptName,
+      };
       try {
-        // Update via a general settings-style write (future: add updateDepartment action)
-        // For now, record the intent; real implementation in Code.gs updateDepartment handler
-        d.hodName  = hodName;
-        d.hodEmail = hodEmail;
+        await window.api('updateDepartment', updates);
+        // Update local cache
+        Object.assign(d, { hodName: hodName, hodEmail: hodEmail, HODName: hodName, HODEmail: hodEmail });
         saved++;
       } catch { errors++; }
     }
@@ -1557,45 +1577,32 @@ function _injectBroadcastModal() {
 }
 
 async function _sendBroadcast() {
-  const errEl   = _el('adm-bc-error');
-  const btn     = _el('adm-bc-send');
-  const audience = _el('adm-bc-audience')?.value || 'ALL';
-  const subject  = (_el('adm-bc-subject')?.value||'').trim();
-  const body     = (_el('adm-bc-body')?.value||'').trim();
+  const title   = _el('adm-bc-subject')?.value?.trim();
+  const message = _el('adm-bc-body')?.value?.trim();
 
-  errEl.classList.remove('visible');
-  if (!subject) { errEl.textContent='Subject is required.'; errEl.classList.add('visible'); return; }
-  if (!body)    { errEl.textContent='Message body is required.'; errEl.classList.add('visible'); return; }
+  if (!title || !message) {
+    window.ui?.toast('Validation', 'Subject and message are required.', 'warning');
+    return;
+  }
 
-  // Determine recipients
-  let recipients = _users.filter(u => u.isActive === 'TRUE');
-  if (audience !== 'ALL') recipients = recipients.filter(u => u.role === audience);
-
-  if (!recipients.length) { errEl.textContent='No active users match the selected audience.'; errEl.classList.add('visible'); return; }
-
-  const confirmed = await window.ui?.confirm(
-    'Send Broadcast',
-    `Send this announcement to ${recipients.length} user(s)?`,
-    'Send Now'
-  );
+  const activeCount = _users.filter(u => u.isActive === 'TRUE').length;
+  const confirmed = confirm('Send broadcast to ALL active users (' + activeCount + ' recipients)?\n\nThis cannot be undone.');
   if (!confirmed) return;
 
-  if (btn) { btn.disabled=true; btn.textContent='Sending…'; }
+  const btn = _el('adm-bc-send');
+  window.ui?.setLoading(btn, true);
 
   try {
-    // Send via addComment on a system task (or a future broadcastAnnouncement API action)
-    // For now, we record it as a system notification and call updateSetting as audit
-    await window.api('updateSetting', {
-      key:   'LAST_BROADCAST',
-      value: JSON.stringify({ subject, audience, sentAt: new Date().toISOString(), recipients: recipients.length }),
-    });
-    _el('adm-broadcast-modal').classList.remove('open');
-    window.ui?.toast('Broadcast Sent', `Announcement sent to ${recipients.length} user(s).`, 'success');
+    const result = await window.api('broadcastAnnouncement', { title, message });
+    _el('adm-broadcast-modal')?.classList.remove('open');
+    window.ui?.toast('Broadcast Sent', 'Announcement delivered to ' + (result?.sent || 0) + ' users.', 'success');
+    if (result?.failed > 0) {
+      window.ui?.toast('Partial Failure', result.failed + ' emails failed. Check Apps Script logs.', 'warning');
+    }
   } catch (err) {
-    errEl.textContent = err.message;
-    errEl.classList.add('visible');
+    window.ui?.toast('Error', err.message, 'error');
   } finally {
-    if (btn) { btn.disabled=false; btn.textContent='📣 Send Broadcast'; }
+    window.ui?.setLoading(btn, false);
   }
 }
 
@@ -1940,6 +1947,13 @@ function _on(id, ev, fn) { _el(id)?.addEventListener(ev, fn); }
 function _esc(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function _escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+}
+async function _loadUsers() {
+  try { _users = await window.api('getUsers', {}); } catch { /* keep existing cache */ }
+  _renderUsersTable();
+}
 function _fmtDate(iso) {
   if (!iso) return '—';
   try { return new Date(iso).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); } catch { return iso; }
@@ -1975,6 +1989,7 @@ document.addEventListener('drishti:viewchange', async (e) => {
   if (view === 'departments') await renderDepartmentsView();
   if (view === 'audit')       await renderAuditView();
   if (view === 'settings')    await renderSettingsView();
+  // Tasks view handled by loadTasks() in index.html for all roles including Super Admin
 });
 
 document.addEventListener('drishti:appready', () => {
