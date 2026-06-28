@@ -2641,7 +2641,7 @@ ul, ol { list-style: none; }
     // Replace with your deployed Apps Script URL before going live.
     // ══════════════════════════════════════════════════════════════════════
     const CONFIG = {
-      API_URL: 'https://script.google.com/macros/s/AKfycbzpt38YnkXaUe9KQ0rWUCvVDYBpxwodAhHc78liF76C5nK9m-wJfcOsR2SHh1DV7a9Mzw/exec',
+      API_URL: 'https://script.google.com/macros/s/AKfycbxbtR6hOU-Ln_nA4ZL7ESk-WpXgWi6mvTHuNKE4m5mX6OTRmcPBGZCEDPms9jng-DViVA/exec',
       SESSION_KEY: 'drishti_session',
       USER_KEY:    'drishti_user',
     };
@@ -2738,6 +2738,11 @@ ul, ol { list-style: none; }
           browser: navigator.userAgent.substring(0, 200),
         });
         if (!result || !result.success) {
+          // CAPTCHA required — show the challenge UI instead of a raw error
+          if (result?.captchaRequired && typeof window.showCaptchaChallenge === 'function') {
+            await window.showCaptchaChallenge(email);
+            throw new Error('Please complete the security check below.');
+          }
           throw new Error(result?.message || 'Login failed.');
         }
         const sessionData = {
