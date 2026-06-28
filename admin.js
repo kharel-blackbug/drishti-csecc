@@ -1245,7 +1245,7 @@ function _injectUserModal() {
       <div class="form-group" id="adm-um-password-group">
         <label class="form-label" for="adm-um-password">Password <span style="color:var(--color-danger)">*</span></label>
         <input type="password" class="input" id="adm-um-password" autocomplete="new-password" aria-required="true" />
-        <div class="form-hint">Minimum 8 characters. Leave blank to keep existing (edit mode).</div>
+        <div class="form-hint">Min 12 chars · uppercase · lowercase · number · special character (e.g. Admin@2024). Leave blank in edit mode to keep existing.</div>
       </div>
       <div class="grid grid-2" style="gap:var(--space-4);">
         <div class="form-group">
@@ -1355,8 +1355,25 @@ async function _submitUserForm() {
   errEl.classList.remove('visible');
   if (!fullName) { errEl.textContent='Full Name is required.'; errEl.classList.add('visible'); return; }
   if (!email)    { errEl.textContent='Email is required.';     errEl.classList.add('visible'); return; }
-  if (!isEdit && password.length < 8) { errEl.textContent='Password must be at least 8 characters.'; errEl.classList.add('visible'); return; }
-  if (isEdit && password && password.length < 8) { errEl.textContent='New password must be at least 8 characters.'; errEl.classList.add('visible'); return; }
+
+  // Password validation — must match backend policy (12+ chars, complexity)
+  const _checkPassword = (pw) => {
+    if (pw.length < 12) return 'Password must be at least 12 characters.';
+    if (!/[A-Z]/.test(pw)) return 'Password must contain at least one uppercase letter.';
+    if (!/[a-z]/.test(pw)) return 'Password must contain at least one lowercase letter.';
+    if (!/[0-9]/.test(pw)) return 'Password must contain at least one number.';
+    if (!/[^A-Za-z0-9]/.test(pw)) return 'Password must contain at least one special character (e.g. @, #, $, !).';
+    return null;
+  };
+  if (!isEdit) {
+    if (!password) { errEl.textContent='Password is required.'; errEl.classList.add('visible'); return; }
+    const pwErr = _checkPassword(password);
+    if (pwErr) { errEl.textContent=pwErr; errEl.classList.add('visible'); return; }
+  }
+  if (isEdit && password) {
+    const pwErr = _checkPassword(password);
+    if (pwErr) { errEl.textContent=pwErr; errEl.classList.add('visible'); return; }
+  }
 
   if (btn) { btn.disabled=true; btn.textContent='Saving…'; }
 

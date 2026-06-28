@@ -840,8 +840,6 @@ function _loadMarked() {
     const s = document.createElement('script');
     s.src = MARKED_CDN;
     s.async = true;
-    s.integrity = 'sha512-dMe5JXNQZ6VKsWG/m41lGIcCq+2dZKflFhVrEOeQ0A5SBGDgRhWgWp0XCWUNJ1cYWkMIFqhKLJ3qQpxJ1XlQ==';
-    s.crossOrigin = 'anonymous';
     s.onload  = function() {
       // Configure marked for safe government-appropriate rendering
       if (window.marked && window.marked.setOptions) {

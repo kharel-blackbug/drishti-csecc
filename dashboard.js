@@ -981,8 +981,6 @@ function _loadChartJS() {
     const s         = document.createElement('script');
     s.src           = CHART_CDN;
     s.async         = true;
-    s.integrity     = 'sha512-ZpOF0cDnEGdKR7bQOIKa9UcMXqNOBCe22I3oTEiVVYdqKHLBGFTJ3kCRjJgvJEzGxmpB0aTe7O8VmF4MFPPA==';
-    s.crossOrigin   = 'anonymous';
     s.onload        = () => resolve(window.Chart);
     s.onerror       = () => reject(new Error('Failed to load Chart.js from CDN.'));
     document.head.appendChild(s);
