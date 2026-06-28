@@ -3519,6 +3519,10 @@ ul, ol { list-style: none; }
         // Super Admin can also view tasks — admin.js has no tasks handler, so call loadTasks() for all non-dept roles
         if (view === 'tasks'     && !_isDept) loadTasks();
         if (view === 'departments' && !_isAdmin)            loadDepartments();
+        // task-detail is handled by review.js overlay — redirect so it opens correctly
+        if (view === 'task-detail' && e.detail.param) {
+          router.navigate('review', { taskID: e.detail.param });
+        }
       });
 
       // ── Task table actions ───────────────────────────────────────────

@@ -855,7 +855,14 @@ function _injectCreateTaskModal() {
     </div>
   </div>`;
   document.body.appendChild(m);
-  // Note: _wireCreateTaskModal() is called by openCreateTaskModal() with await
+
+  // ── One-time events: backdrop click + ESC (added here so they never accumulate) ──
+  m.addEventListener('click', function(e) {
+    if (e.target === m) _safeCloseCreateTaskModal();
+  });
+  m.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { e.preventDefault(); _safeCloseCreateTaskModal(); }
+  });
 }
 
 function _hasUnsavedFormData() {
@@ -873,19 +880,16 @@ function _safeCloseCreateTaskModal() {
 }
 
 async function _wireCreateTaskModal() {
-  // ── Close buttons (X and Cancel) — ask for confirmation if form has data
+  // Backdrop click and ESC are wired once in _injectCreateTaskModal() — do NOT add here
+  // to avoid event listener accumulation on repeated modal opens.
+
+  // ── Close buttons (X and Cancel) — replace old listeners each open ──────
   ['adm-create-close','adm-create-cancel'].forEach(id => {
-    _on(id, 'click', _safeCloseCreateTaskModal);
-  });
-
-  // ── Backdrop click — do NOT close; show confirmation only
-  _el('adm-create-task-modal')?.addEventListener('click', e => {
-    if (e.target === _el('adm-create-task-modal')) _safeCloseCreateTaskModal();
-  });
-
-  // ── ESC key — same confirmation logic
-  _el('adm-create-task-modal')?.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { e.preventDefault(); _safeCloseCreateTaskModal(); }
+    const el = _el(id);
+    if (!el) return;
+    const fresh = el.cloneNode(true); // remove old listeners
+    el.parentNode.replaceChild(fresh, el);
+    fresh.addEventListener('click', _safeCloseCreateTaskModal);
   });
 
   // ── Char counter
@@ -949,9 +953,10 @@ async function _wireCreateTaskModal() {
     _buildDeptCheckboxes(); // reload fresh
   });
   _on('adm-view-new-task', 'click', () => {
-    const id = _el('adm-new-task-id')?.textContent;
+    const id = _el('adm-new-task-id')?.textContent?.trim();
     closeCreateTaskModal();
-    if (id && id !== '—') window.router?.navigate('task-detail', { taskID: id });
+    // Navigate to review mode with the specific task — review.js handles full task detail
+    if (id && id !== '—') window.router?.navigate('review', { taskID: id });
   });
 }
 
