@@ -3238,11 +3238,13 @@ ul, ol { list-style: none; }
       document.getElementById('login-view').classList.remove('active');
       document.getElementById('app').classList.add('active');
       // Expose globals needed by dashboard.js and other modules
-      window.api   = api;
-      window.store = store;
-      window.auth  = auth;
-      window.ui    = ui;
-      window.router= router;
+      window.api        = api;
+      window.store      = store;
+      window.auth       = auth;
+      window.ui         = ui;
+      window.router     = router;
+      window.loadTasks  = loadTasks;      // exposed so admin.js can refresh after task creation
+      window.loadDashboard = loadDashboard; // exposed so other modules can refresh KPIs
       populateUserUI();
       applyRoleGates();
       router.resolve();

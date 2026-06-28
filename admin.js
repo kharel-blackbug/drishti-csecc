@@ -1028,6 +1028,10 @@ async function _submitCreateTask() {
     _el('adm-create-footer').style.display    = 'none';
     _el('adm-create-success').style.display   = '';
     window.ui?.toast('Task Created', `Task ${newTaskID} created successfully.`, 'success');
+    // Refresh the tasks list so the new task appears immediately
+    if (typeof window.loadTasks === 'function') window.loadTasks();
+    // Invalidate dashboard cache so KPIs update on next view
+    if (typeof window.invalidateAPICache === 'function') window.invalidateAPICache('createTask');
 
   } catch (err) {
     _showFormError(err.message);
