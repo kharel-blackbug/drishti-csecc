@@ -948,6 +948,8 @@ ul, ol { list-style: none; }
   background: var(--color-bg);
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
+  display: flex;
+  flex-direction: column;
 }
 
 #main-content::-webkit-scrollbar { width: 5px; }
@@ -959,21 +961,23 @@ ul, ol { list-style: none; }
 
 .view-container {
   padding: 20px 24px;
-  max-width: 1440px;
-  margin: 0 auto;
-  min-height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .view-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: var(--space-6);
+  margin-bottom: 14px;
   gap: var(--space-4);
+  flex-shrink: 0;
 }
 
 .view-title {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--color-text-primary);
   line-height: 1.2;
@@ -994,7 +998,9 @@ ul, ol { list-style: none; }
 
 .view-panel { display: none; }
 .view-panel.active {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   animation: panel-in 0.2s ease;
 }
 
@@ -1249,12 +1255,12 @@ ul, ol { list-style: none; }
 }
 
 .kpi-value {
-  font-size: 2.75rem;
+  font-size: 3.5rem;
   font-weight: 800;
   color: var(--color-text-primary);
   line-height: 1;
-  margin-bottom: var(--space-1);
-  letter-spacing: -0.02em;
+  margin-bottom: 2px;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1720,11 +1726,14 @@ ul, ol { list-style: none; }
 #offline-banner.visible { display: flex; }
 
 /* ── GRID HELPERS ─────────────────────────────────────────────────────── */
-.grid     { display: grid; gap: var(--space-5); }
+.grid     { display: grid; gap: var(--space-4); }
 .grid-2   { grid-template-columns: repeat(2, 1fr); }
 .grid-3   { grid-template-columns: repeat(3, 1fr); }
 .grid-4   { grid-template-columns: repeat(4, 1fr); }
-.grid-kpi { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.grid-kpi { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; flex-shrink: 0; }
+/* Bottom dashboard sections stretch to fill remaining height */
+.grid-2.mt-6 { flex: 1; align-content: start; }
+.grid-2.mt-6 > .card { min-height: 0; }
 
 /* ── UTILITIES ────────────────────────────────────────────────────────── */
 .flex            { display: flex; }
@@ -1737,7 +1746,7 @@ ul, ol { list-style: none; }
 .gap-5 { gap: var(--space-5); }
 .mt-1  { margin-top: var(--space-1); }
 .mt-4  { margin-top: var(--space-4); }
-.mt-6  { margin-top: var(--space-6); }
+.mt-6  { margin-top: 14px; }
 .mb-4  { margin-bottom: var(--space-4); }
 .mb-6  { margin-bottom: var(--space-6); }
 .w-full      { width: 100%; }
