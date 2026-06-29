@@ -856,13 +856,70 @@ function _injectCreateTaskModal() {
   </div>`;
   document.body.appendChild(m);
 
-  // ── One-time events: backdrop click + ESC (added here so they never accumulate) ──
+  // ── One-time event wiring (never duplicated) ──────────────────────────────
+  // Backdrop click — confirm if form has data
   m.addEventListener('click', function(e) {
     if (e.target === m) _safeCloseCreateTaskModal();
   });
+  // ESC key — confirm if form has data
   m.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') { e.preventDefault(); _safeCloseCreateTaskModal(); }
   });
+  // X button
+  document.getElementById('adm-create-close').addEventListener('click', _safeCloseCreateTaskModal);
+  // Cancel button
+  document.getElementById('adm-create-cancel').addEventListener('click', _safeCloseCreateTaskModal);
+  // Char counter for subject
+  var subjEl = document.getElementById('ct-subject');
+  var ctrEl  = document.getElementById('ct-subject-count');
+  if (subjEl && ctrEl) {
+    subjEl.addEventListener('input', function() {
+      var len = subjEl.value.length;
+      ctrEl.textContent = len + ' / 200';
+      ctrEl.className = 'adm-char-counter' + (len > 180 ? ' over' : len > 150 ? ' warn' : '');
+    });
+  }
+  // Dept search filter
+  document.getElementById('ct-dept-search')?.addEventListener('input', _filterDeptOptions);
+  // Submit button
+  document.getElementById('adm-create-submit').addEventListener('click', _submitCreateTask);
+  // File attachment validation
+  var fileEl = document.getElementById('ct-attachment');
+  var fileLbl = document.getElementById('ct-attachment-label');
+  if (fileEl && fileLbl) {
+    fileEl.addEventListener('change', function() {
+      var f = fileEl.files[0];
+      if (!f) { fileLbl.textContent = 'No file chosen'; return; }
+      if (f.size > 10 * 1024 * 1024) {
+        window.ui?.toast('File Too Large', 'Maximum 10 MB.', 'warning');
+        fileEl.value = ''; fileLbl.textContent = 'No file chosen'; return;
+      }
+      var ext = f.name.split('.').pop().toLowerCase();
+      var ok = ['pdf','doc','docx','xls','xlsx','ppt','pptx','jpg','jpeg','png','zip'];
+      if (!ok.includes(ext)) {
+        window.ui?.toast('Invalid Type', 'Allowed: ' + ok.join(', '), 'warning');
+        fileEl.value = ''; fileLbl.textContent = 'No file chosen'; return;
+      }
+      fileLbl.textContent = f.name + ' (' + (f.size/1024).toFixed(0) + ' KB)';
+    });
+  }
+  // "Add Another" button on success screen
+  document.getElementById('adm-add-another').addEventListener('click', function() {
+    _el('adm-create-success').style.display   = 'none';
+    _el('adm-create-form-body').style.display = '';
+    _el('adm-create-footer').style.display    = '';
+    _resetCreateForm();
+    _buildDeptCheckboxes();
+  });
+  // "View Task" button on success screen
+  document.getElementById('adm-view-new-task').addEventListener('click', function() {
+    var id = (_el('adm-new-task-id')?.textContent || '').trim();
+    closeCreateTaskModal();
+    if (id && id !== '—') window.router?.navigate('review', { taskID: id });
+  });
+  // Default assigned date to today
+  var adEl = document.getElementById('ct-assigned-date');
+  if (adEl) adEl.value = new Date().toISOString().split('T')[0];
 }
 
 function _hasUnsavedFormData() {
@@ -879,91 +936,12 @@ function _safeCloseCreateTaskModal() {
   closeCreateTaskModal();
 }
 
-async function _wireCreateTaskModal() {
-  // Backdrop click and ESC are wired once in _injectCreateTaskModal() — do NOT add here
-  // to avoid event listener accumulation on repeated modal opens.
-
-  // ── Close buttons (X and Cancel) — replace old listeners each open ──────
-  ['adm-create-close','adm-create-cancel'].forEach(id => {
-    const el = _el(id);
-    if (!el) return;
-    const fresh = el.cloneNode(true); // remove old listeners
-    el.parentNode.replaceChild(fresh, el);
-    fresh.addEventListener('click', _safeCloseCreateTaskModal);
-  });
-
-  // ── Char counter
-  const subj = _el('ct-subject');
-  const ctr  = _el('ct-subject-count');
-  subj?.addEventListener('input', () => {
-    const len = subj.value.length;
-    ctr.textContent = `${len} / 200`;
-    ctr.className = 'adm-char-counter' + (len > 180 ? ' over' : len > 150 ? ' warn' : '');
-  });
-
-  // ── Default assigned date to today
-  const adEl = _el('ct-assigned-date');
-  if (adEl && !adEl.value) adEl.value = new Date().toISOString().split('T')[0];
-
-  // ── Dept search
-  _el('ct-dept-search')?.addEventListener('input', _filterDeptOptions);
-
-  // ── Load departments and wire checkboxes — await so they're ready before user interacts
-  const deptLoadEl = _el('ct-dept-checkboxes');
-  if (deptLoadEl) {
-    deptLoadEl.innerHTML = '<div style="padding:8px;font-size:12px;color:var(--color-text-muted);">Loading departments…</div>';
-  }
-  await _buildDeptCheckboxes();
-
-  // ── File attachment input wiring
-  const fileInput = _el('ct-attachment');
-  const fileLabel = _el('ct-attachment-label');
-  if (fileInput && fileLabel) {
-    fileInput.addEventListener('change', () => {
-      const f = fileInput.files[0];
-      if (!f) { fileLabel.textContent = 'No file chosen'; return; }
-      const MAX_MB = 10;
-      if (f.size > MAX_MB * 1024 * 1024) {
-        window.ui?.toast('File Too Large', `Maximum file size is ${MAX_MB} MB.`, 'warning');
-        fileInput.value = '';
-        fileLabel.textContent = 'No file chosen';
-        return;
-      }
-      const ALLOWED = ['pdf','docx','xlsx','pptx','jpg','jpeg','png','zip','doc','xls','ppt'];
-      const ext = f.name.split('.').pop().toLowerCase();
-      if (!ALLOWED.includes(ext)) {
-        window.ui?.toast('Invalid File Type', `Allowed: ${ALLOWED.join(', ')}`, 'warning');
-        fileInput.value = '';
-        fileLabel.textContent = 'No file chosen';
-        return;
-      }
-      fileLabel.textContent = `${f.name} (${(f.size/1024).toFixed(0)} KB)`;
-    });
-  }
-
-  // ── Submit
-  _on('adm-create-submit', 'click', _submitCreateTask);
-
-  // ── Success screen buttons
-  _on('adm-add-another', 'click', () => {
-    _el('adm-create-success').style.display  = 'none';
-    _el('adm-create-form-body').style.display = '';
-    _el('adm-create-footer').style.display    = '';
-    _resetCreateForm();
-    _buildDeptCheckboxes(); // reload fresh
-  });
-  _on('adm-view-new-task', 'click', () => {
-    const id = _el('adm-new-task-id')?.textContent?.trim();
-    closeCreateTaskModal();
-    // Navigate to review mode with the specific task — review.js handles full task detail
-    if (id && id !== '—') window.router?.navigate('review', { taskID: id });
-  });
-}
 
 async function _buildDeptCheckboxes() {
   const box = _el('ct-dept-checkboxes');
   if (!box) return;
   if (!_departments.length) {
+    box.innerHTML = '<div style="padding:8px;font-size:12px;color:var(--color-text-muted);">Loading departments…</div>';
     try { _departments = await window.api('getDepartments',{}); }
     catch { _departments = []; }
   }
@@ -977,8 +955,9 @@ async function _buildDeptCheckboxes() {
     </div>
   </label>`).join('');
 
-  // Wire checkbox changes
+  // Restore checked state for any pre-selected departments
   box.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    if (_selectedDepts.has(cb.value)) cb.checked = true;
     cb.addEventListener('change', () => {
       if (cb.checked) {
         _selectedDepts.add(cb.value);
@@ -1066,90 +1045,103 @@ function _resetCreateForm() {
 }
 
 async function _submitCreateTask() {
-  const errEl = _el('ct-error');
-  const btn   = _el('adm-create-submit');
-  if (errEl) { errEl.textContent = ''; errEl.classList.remove('visible'); }
+  var errEl = _el('ct-error');
+  var btn   = _el('adm-create-submit');
+  if (errEl) { errEl.textContent = ''; errEl.classList.remove('visible'); errEl.style.display='none'; }
 
-  // ── Collect form values ───────────────────────────────────────────────────
-  const subject       = (_el('ct-subject')?.value   || '').trim();
-  const description   = (_el('ct-description')?.value || '').trim();
-  const dueDate       = (_el('ct-due-date')?.value   || '').trim();
-  const primaryDept   = (_el('ct-primary-dept')?.value || '').trim();
-  const priority      = document.querySelector('input[name="ct-priority"]:checked')?.value || 'MEDIUM';
-  const status        = _el('ct-status')?.value   || 'PENDING';
-  const assignedDate  = _el('ct-assigned-date')?.value || new Date().toISOString().split('T')[0];
-  const reviewDate    = _el('ct-review-date')?.value  || '';
-  const officer       = (_el('ct-officer')?.value    || '').trim();
-  const category      = _el('ct-category')?.value    || 'General';
-  const fileNumber    = (_el('ct-file-no')?.value    || '').trim();
-  const cabinetRef    = (_el('ct-cabinet-ref')?.value || '').trim();
-  const remarks       = (_el('ct-remarks')?.value    || '').trim();
-  const assignedDepts = [..._selectedDepts].join(',');
-  const attachFile    = _el('ct-attachment')?.files?.[0] || null;
+  // Collect values
+  var subject      = (_el('ct-subject')?.value || '').trim();
+  var description  = (_el('ct-description')?.value || '').trim();
+  var dueDate      = (_el('ct-due-date')?.value || '').trim();
+  var primaryDept  = (_el('ct-primary-dept')?.value || '').trim();
+  var priority     = document.querySelector('input[name="ct-priority"]:checked')?.value || 'MEDIUM';
+  var status       = _el('ct-status')?.value || 'PENDING';
+  var assignedDate = _el('ct-assigned-date')?.value || new Date().toISOString().split('T')[0];
+  var reviewDate   = _el('ct-review-date')?.value || '';
+  var officer      = (_el('ct-officer')?.value || '').trim();
+  var category     = _el('ct-category')?.value || 'General';
+  var fileNumber   = (_el('ct-file-no')?.value || '').trim();
+  var cabinetRef   = (_el('ct-cabinet-ref')?.value || '').trim();
+  var remarks      = (_el('ct-remarks')?.value || '').trim();
+  var assignedDepts = [..._selectedDepts].join(',');
+  var attachFile   = _el('ct-attachment')?.files?.[0] || null;
 
-  // ── Frontend validation (mirrors backend — gives instant feedback) ─────────
-  if (!subject)           { _showFormError('Subject is required.');                              return; }
-  if (subject.length > 200){ _showFormError('Subject exceeds 200 characters.');                 return; }
-  if (!assignedDepts)     { _showFormError('Select at least one department from the list below.'); return; }
-  if (!primaryDept)       { _showFormError('Primary Department is required.');                   return; }
-  if (!dueDate)           { _showFormError('Due Date is required.');                             return; }
+  // Validate
+  function showErr(msg) {
+    if (errEl) { errEl.textContent = msg; errEl.classList.add('visible'); errEl.style.display='block'; }
+    window.ui?.toast('Validation', msg, 'warning');
+  }
+  if (!subject)        { showErr('Subject is required.'); return; }
+  if (subject.length > 200) { showErr('Subject must be under 200 characters.'); return; }
+  if (!assignedDepts)  { showErr('Please select at least one department.'); return; }
+  if (!primaryDept)    { showErr('Please select a Primary Department.'); return; }
+  if (!dueDate)        { showErr('Due Date is required.'); return; }
 
-  console.log('[DRISHTI] Task creation payload:', { subject, assignedDepts, primaryDept, dueDate, priority, category });
-  if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating task…'; }
 
   try {
-    // ── Step 1: Create task ───────────────────────────────────────────────────
-    console.log('[DRISHTI] Step 1: Calling api(createTask)…');
-    const result = await window.api('createTask', {
-      subject, description, assignedDepts, primaryDept,
-      priority, status, dueDate, assignedDate, reviewDate,
-      officerResponsible: officer, category, fileNumber,
-      cabinetReference: cabinetRef, remarks,
-    });
-    console.log('[DRISHTI] Step 1 done — taskID:', result?.taskID);
+    // Step 1: Create task
+    var payload = {
+      subject: subject,
+      description: description,
+      assignedDepts: assignedDepts,
+      primaryDept: primaryDept,
+      priority: priority,
+      status: status,
+      dueDate: dueDate,
+      assignedDate: assignedDate,
+      reviewDate: reviewDate,
+      officerResponsible: officer,
+      category: category,
+      fileNumber: fileNumber,
+      cabinetReference: cabinetRef,
+      remarks: remarks
+    };
 
-    const newTaskID = result?.taskID;
-    if (!newTaskID) throw new Error('Server returned no Task ID. Task may not have been saved.');
+    var result = await window.api('createTask', payload);
+    var newTaskID = result && result.taskID;
+    if (!newTaskID) throw new Error('Server did not return a Task ID. Please try again.');
 
-    // ── Step 2: Upload file attachment (optional) ─────────────────────────────
+    // Step 2: Upload file if selected (non-fatal)
     if (attachFile) {
-      console.log('[DRISHTI] Step 2: Uploading attachment:', attachFile.name);
       if (btn) btn.textContent = 'Uploading file…';
       try {
-        const base64 = await _fileToBase64(attachFile);
+        var base64 = await new Promise(function(res, rej) {
+          var r = new FileReader();
+          r.onload  = function() { res(r.result.split(',')[1]); };
+          r.onerror = function() { rej(new Error('Could not read file.')); };
+          r.readAsDataURL(attachFile);
+        });
         await window.api('uploadFile', {
           taskID:   newTaskID,
           fileName: attachFile.name,
           fileData: base64,
-          mimeType: attachFile.type || 'application/octet-stream',
+          mimeType: attachFile.type || 'application/octet-stream'
         });
-        console.log('[DRISHTI] Step 2 done — file uploaded.');
       } catch (uploadErr) {
-        // File upload failure is non-fatal — task was created, just warn
-        console.warn('[DRISHTI] File upload failed:', uploadErr.message);
-        window.ui?.toast('Attachment Warning', 'Task created but file upload failed: ' + uploadErr.message, 'warning');
+        window.ui?.toast('Attachment', 'Task saved but file upload failed: ' + uploadErr.message, 'warning');
       }
     }
 
-    // ── Step 3: Show success ──────────────────────────────────────────────────
-    _el('adm-new-task-id').textContent      = newTaskID;
-    _el('adm-create-form-body').style.display = 'none';
-    _el('adm-create-footer').style.display    = 'none';
-    _el('adm-create-success').style.display   = '';
-    window.ui?.toast('Task Created', `Task ${newTaskID} created successfully.`, 'success');
+    // Step 3: Show success
+    if (_el('adm-new-task-id')) _el('adm-new-task-id').textContent = newTaskID;
+    if (_el('adm-create-form-body')) _el('adm-create-form-body').style.display = 'none';
+    if (_el('adm-create-footer'))    _el('adm-create-footer').style.display    = 'none';
+    if (_el('adm-create-success'))   _el('adm-create-success').style.display   = '';
+    window.ui?.toast('Task Created', 'Task ' + newTaskID + ' created successfully.', 'success');
 
-    // Refresh task list and invalidate caches
+    // Refresh task list and caches
     if (typeof window.loadTasks === 'function') window.loadTasks();
     if (typeof window.invalidateAPICache === 'function') window.invalidateAPICache('createTask');
 
   } catch (err) {
-    console.error('[DRISHTI] Task creation error:', err.message);
-    _showFormError(err.message || 'An unexpected error occurred. Please try again.');
-    window.ui?.toast('Creation Failed', err.message, 'error');
+    var msg = err.message || 'An error occurred. Please try again.';
+    showErr(msg);
+    console.error('[DRISHTI] Task creation failed:', msg);
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> Create Task';
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Create Task';
     }
   }
 }
@@ -1169,7 +1161,7 @@ function _showFormError(msg) {
   if (el) { el.textContent = msg; el.classList.add('visible'); el.style.display='block'; }
 }
 
-async function openCreateTaskModal() {
+function openCreateTaskModal() {
   if (!_guardAdmin()) return;
   _injectCreateTaskModal();
   _resetCreateForm();
@@ -1177,10 +1169,9 @@ async function openCreateTaskModal() {
   _el('adm-create-form-body').style.display  = '';
   _el('adm-create-footer').style.display     = '';
   _el('adm-create-task-modal').classList.add('open');
-  // Wire events and await department loading — modal is visible but dept list shows
-  // "Loading…" until API returns, preventing form submission with empty dept list
-  await _wireCreateTaskModal();
-  setTimeout(() => _el('ct-subject')?.focus(), 50);
+  setTimeout(() => _el('ct-subject')?.focus(), 100);
+  // Load departments async — modal is already visible
+  _buildDeptCheckboxes();
 }
 
 function closeCreateTaskModal() {
