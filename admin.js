@@ -857,11 +857,8 @@ function _injectCreateTaskModal() {
   document.body.appendChild(m);
 
   // ── One-time event wiring (never duplicated) ──────────────────────────────
-  // Backdrop click — confirm if form has data
-  m.addEventListener('click', function(e) {
-    if (e.target === m) _safeCloseCreateTaskModal();
-  });
-  // ESC key — confirm if form has data
+  // Backdrop click intentionally disabled — accidental click must not lose form data.
+  // ESC key shows confirmation if form has unsaved data.
   m.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') { e.preventDefault(); _safeCloseCreateTaskModal(); }
   });
@@ -1169,9 +1166,9 @@ function _showFormError(msg) {
 function openCreateTaskModal() {
   // Allow Super Admin, Chief Secretary, and Staff to create tasks
   const role = window.store?.session?.role;
-  const canCreate = ['Super Admin','Chief Secretary','Staff'].includes(role);
+  const canCreate = ['Super Admin','Chief Secretary','Chief Secretary Office'].includes(role);
   if (!canCreate) {
-    window.ui?.toast('Access Denied', 'Task creation requires Super Admin, Chief Secretary, or Staff role.', 'error');
+    window.ui?.toast('Access Denied', 'Task creation requires Super Admin, Chief Secretary, or Chief Secretary Office role.', 'error');
     return;
   }
   _injectCreateTaskModal();
@@ -1218,7 +1215,7 @@ async function renderUsersView() {
         <option>Chief Secretary</option>
         <option>Department</option>
         <option>Read Only</option>
-        <option>Staff</option>
+        <option>Chief Secretary Office</option>
       </select>
       <button class="btn btn-primary btn-sm" id="adm-add-user-btn" aria-label="Add new user">+ Add User</button>
     </div>
@@ -1383,7 +1380,7 @@ function _injectUserModal() {
             <option value="Chief Secretary">Chief Secretary</option>
             <option value="Department" selected>Department</option>
             <option value="Read Only">Read Only</option>
-            <option value="Staff">Staff</option>
+            <option value="Chief Secretary Office">Chief Secretary Office</option>
           </select>
         </div>
         <div class="form-group" id="adm-um-dept-group">
@@ -1410,13 +1407,13 @@ function _injectUserModal() {
   </div>`;
   document.body.appendChild(m);
 
+  // Close only via explicit buttons — no backdrop click (prevents accidental data loss)
   ['adm-user-modal-close','adm-um-cancel'].forEach(id => _on(id,'click',()=>_el('adm-user-modal').classList.remove('open')));
-  _el('adm-user-modal').addEventListener('click', e => { if(e.target===_el('adm-user-modal')) _el('adm-user-modal').classList.remove('open'); });
   _on('adm-um-submit','click', _submitUserForm);
 
   // Show/hide dept field based on role (Department + Staff roles need a dept)
   _el('adm-um-role')?.addEventListener('change', () => {
-    const showDept = ['Department','Staff'].includes(_el('adm-um-role').value);
+    const showDept = ['Department','Chief Secretary Office'].includes(_el('adm-um-role').value);
     _el('adm-um-dept-group').style.display = showDept ? '' : 'none';
   });
 
@@ -1450,7 +1447,7 @@ async function _openUserModal(user) {
   if (pwLabel) pwLabel.innerHTML = isEdit ? 'New Password <span style="color:var(--color-text-muted);font-weight:400;">(leave blank to keep)</span>' : 'Password <span style="color:var(--color-danger)">*</span>';
 
   // Show/hide dept
-  const showDept = ['Department','Staff'].includes(_el('adm-um-role').value);
+  const showDept = ['Department','Chief Secretary Office'].includes(_el('adm-um-role').value);
   _el('adm-um-dept-group').style.display = showDept ? '' : 'none';
 
   // Populate dept dropdown if needed
@@ -1588,8 +1585,8 @@ function _injectAddDeptModal() {
   </div>`;
   document.body.appendChild(m);
 
-  ['adm-add-dept-close','adm-nd-cancel'].forEach(id => _on(id,'click',()=>{ m.classList.remove('open'); m.style.opacity='0'; m.style.visibility='hidden'; }));
-  m.addEventListener('click', e => { if(e.target===m){ m.style.opacity='0'; m.style.visibility='hidden'; } });
+  // Close only via explicit buttons — no backdrop click
+  ['adm-add-dept-close','adm-nd-cancel'].forEach(id => _on(id,'click',()=>{ m.style.opacity='0'; m.style.visibility='hidden'; }));
   _on('adm-nd-code','input',function(){ this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
   _on('adm-nd-submit','click',_submitAddDept);
 }
@@ -1835,8 +1832,8 @@ function _injectBroadcastModal() {
   </div>`;
   document.body.appendChild(m);
 
+  // Close only via explicit buttons — no backdrop click
   ['adm-bc-close','adm-bc-cancel'].forEach(id => _on(id,'click',()=>_el('adm-broadcast-modal').classList.remove('open')));
-  _el('adm-broadcast-modal')?.addEventListener('click',e=>{ if(e.target===_el('adm-broadcast-modal'))_el('adm-broadcast-modal').classList.remove('open'); });
   _on('adm-bc-send','click',_sendBroadcast);
 }
 

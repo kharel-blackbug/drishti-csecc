@@ -12,6 +12,10 @@
   <title>DRISHTI — CSECC | Government of Sikkim</title>
 
   <link rel="manifest" href="manifest.json" />
+  <!-- Favicon: Seal of Sikkim — all sizes -->
+  <link rel="icon" type="image/png" sizes="32x32"   href="Seal_of_Sikkim.png" />
+  <link rel="icon" type="image/png" sizes="16x16"   href="Seal_of_Sikkim.png" />
+  <link rel="apple-touch-icon"      sizes="180x180" href="Seal_of_Sikkim.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -3012,7 +3016,7 @@ ul, ol { list-style: none; }
       const isCS       = role === 'Chief Secretary';
       const isDept     = role === 'Department';
       const isReadOnly = role === 'Read Only';
-      const isStaff    = role === 'Staff';
+      const isStaff    = role === 'Chief Secretary Office';
       const isPriv     = isAdmin || isCS;
 
       document.querySelectorAll('.nav-admin-only').forEach(function(el) {
@@ -3025,15 +3029,12 @@ ul, ol { list-style: none; }
         el.classList.toggle('hidden', !isPriv);
       });
 
-      // Staff: show Dashboard and Tasks only (no admin/reports/departments/analytics)
+      // CSO Staff: show Dashboard, Tasks, Review (read), AI assistant — no admin/reports/audit
       if (isStaff) {
         document.querySelectorAll('.sidebar-item[data-view]').forEach(function(item) {
           const v = item.dataset.view;
-          item.classList.toggle('hidden', !['dashboard', 'tasks'].includes(v));
+          item.classList.toggle('hidden', !['dashboard', 'tasks', 'review', 'ai'].includes(v));
         });
-        // Show create task button for Staff
-        const ctBtn = document.getElementById('new-task-btn');
-        if (ctBtn) ctBtn.style.display = '';
         return;
       }
 
@@ -3295,9 +3296,19 @@ ul, ol { list-style: none; }
       window.loadDashboard = loadDashboard;
       populateUserUI();
       applyRoleGates();
-      router.resolve();
-      // Signal all module scripts that the app shell is ready
-      document.dispatchEvent(new CustomEvent('drishti:appready'));
+
+      // Defer router.resolve() and appready by one animation frame.
+      // This guarantees that all type="module" scripts (dashboard.js, admin.js, etc.)
+      // have fully executed and registered their event listeners before we fire
+      // drishti:viewchange and drishti:appready. Without this, a race condition
+      // causes the dashboard to remain blank on first login — the events fire
+      // before module scripts have registered their handlers.
+      requestAnimationFrame(function() {
+        router.resolve();
+        // Signal all module scripts that the app shell is ready
+        document.dispatchEvent(new CustomEvent('drishti:appready'));
+      });
+
       // Preload departments in background so Create Task modal opens instantly
       api('getDepartments', {}).then(function(depts) {
         window._preloadedDepts = depts || [];
@@ -3558,26 +3569,24 @@ ul, ol { list-style: none; }
       });
 
       // ── View-change event → load data ────────────────────────────────
+      // NOTE: dashboard rendering is FULLY delegated to module scripts:
+      //   Super Admin  → admin.js (renderAdminDashboard)
+      //   CS/ReadOnly  → dashboard.js (initDashboard)
+      //   Department   → dept.js
+      //   CSO Staff    → dashboard.js (initDashboard — same as CS)
+      // index.html only handles tasks, departments, and task-detail redirect.
       document.addEventListener('drishti:viewchange', async (e) => {
         const { view } = e.detail;
         const _role    = store.session?.role;
         const _isDept  = _role === 'Department';
-        const _isAdmin = _role === 'Super Admin';
-        const _isStaff = _role === 'Staff';
 
-        // Staff dashboard: load their own task stats
-        if (view === 'dashboard' && _isStaff) { loadStaffDashboard(); return; }
-
-        // Standard dashboard for non-dept, non-admin, non-staff
-        if (view === 'dashboard' && !_isDept && !_isAdmin) loadDashboard();
-
-        // Tasks for all non-dept roles
+        // Tasks: all non-dept roles use the tasks loader
         if (view === 'tasks' && !_isDept) loadTasks();
 
-        // Departments view (non-admin fallback shows read-only table)
-        if (view === 'departments' && !_isAdmin) loadDepartments();
+        // Departments: non-admin fallback shows read-only table
+        if (view === 'departments' && _role !== 'Super Admin') loadDepartments();
 
-        // task-detail redirects to review mode
+        // task-detail → redirect to review mode overlay
         if (view === 'task-detail' && e.detail.param) {
           router.navigate('review', { taskID: e.detail.param });
         }
@@ -3585,16 +3594,28 @@ ul, ol { list-style: none; }
 
       // ── Task table actions ───────────────────────────────────────────
       document.getElementById('refresh-dashboard').addEventListener('click', loadDashboard);
-      const _openTaskModal = () => {
+      // openCreateTaskModal is defined in admin.js (type="module").
+      // Module scripts are deferred, so on very fast clicks there is a brief
+      // window where the function isn't set yet. We retry once after 300ms
+      // to handle that race without the user ever seeing "Access Denied".
+      const _openTaskModal = function() {
         const role = store.session?.role;
-        const canCreate = ['Super Admin','Chief Secretary','Staff'].includes(role);
-        if (canCreate && typeof window.openCreateTaskModal === 'function') {
+        const canCreate = ['Super Admin','Chief Secretary','Chief Secretary Office'].includes(role);
+        if (!canCreate) {
+          ui.toast('Access Denied', 'Task creation requires Super Admin, Chief Secretary, or Chief Secretary Office role.', 'warning');
+          return;
+        }
+        if (typeof window.openCreateTaskModal === 'function') {
           window.openCreateTaskModal();
-        } else if (canCreate) {
-          // Modal not yet loaded — open staff task creation inline
-          openStaffCreateTask();
         } else {
-          ui.toast('Access Denied', 'Task creation requires Super Admin, Chief Secretary, or Staff role.', 'warning');
+          // Module script not yet fully executed — retry after short delay
+          setTimeout(function() {
+            if (typeof window.openCreateTaskModal === 'function') {
+              window.openCreateTaskModal();
+            } else {
+              ui.toast('Loading', 'Please try again in a moment — the task form is still loading.', 'info');
+            }
+          }, 350);
         }
       };
       document.getElementById('new-task-btn')?.addEventListener('click', _openTaskModal);
@@ -3655,92 +3676,6 @@ ul, ol { list-style: none; }
       }
     });
 
-
-    // ══════════════════════════════════════════════════════════════════════
-    // STAFF DASHBOARD
-    // ══════════════════════════════════════════════════════════════════════
-    async function loadStaffDashboard() {
-      const panel = document.getElementById('view-dashboard');
-      if (!panel) return;
-      panel.innerHTML = `
-        <div class="view-header">
-          <div>
-            <div class="view-title">My Dashboard</div>
-            <div class="view-subtitle" id="staff-greeting">Loading…</div>
-          </div>
-          <button class="btn btn-primary btn-sm" id="staff-create-task-btn" aria-label="Create a new task">
-            <span class="material-icons-round" style="font-size:1rem;">add</span>
-            New Task
-          </button>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-4);margin-bottom:var(--space-6);" id="staff-kpi-row">
-          ${['Total Submitted','Pending Review','Completed'].map((l,i) => `
-          <div class="card" style="padding:var(--space-5);border-top:3px solid var(--color-primary);">
-            <div style="font-size:2rem;font-weight:800;color:var(--color-text-primary);" id="staff-kpi-${i}">—</div>
-            <div style="font-size:var(--font-sm);color:var(--color-text-secondary);margin-top:4px;">${l}</div>
-          </div>`).join('')}
-        </div>
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">My Submitted Tasks</div>
-            <button class="btn btn-ghost btn-sm" onclick="window.router&&window.router.navigate('tasks')" aria-label="View all tasks">View all →</button>
-          </div>
-          <div id="staff-tasks-list">
-            <div class="skeleton skeleton-text" style="margin:var(--space-4);width:60%;"></div>
-          </div>
-        </div>`;
-
-      document.getElementById('staff-create-task-btn')?.addEventListener('click', function() {
-        if (typeof window.openCreateTaskModal === 'function') window.openCreateTaskModal();
-        else openStaffCreateTask();
-      });
-
-      const h = new Date().getHours();
-      const g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-      const name = (store.session?.fullName || '').split(' ')[0] || 'Officer';
-      const grEl = document.getElementById('staff-greeting');
-      if (grEl) grEl.textContent = `${g}, ${name}`;
-
-      try {
-        const result = await api('getTasks', { pageSize: 100 });
-        const tasks  = result?.tasks || [];
-        const total     = tasks.length;
-        const pending   = tasks.filter(t => ['PENDING','IN_PROGRESS','REVIEW'].includes(t.Status)).length;
-        const completed = tasks.filter(t => t.Status === 'COMPLETED').length;
-        const el0 = document.getElementById('staff-kpi-0'); if(el0) el0.textContent = total;
-        const el1 = document.getElementById('staff-kpi-1'); if(el1) el1.textContent = pending;
-        const el2 = document.getElementById('staff-kpi-2'); if(el2) el2.textContent = completed;
-
-        const listEl = document.getElementById('staff-tasks-list');
-        if (!listEl) return;
-        if (!tasks.length) {
-          listEl.innerHTML = '<div class="empty-state" style="padding:var(--space-6);"><div class="empty-state-title">No tasks submitted yet</div><div class="empty-state-desc">Use the New Task button to submit your first task.</div></div>';
-          return;
-        }
-        listEl.innerHTML = tasks.slice(0, 8).map(t => `
-        <div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-5);border-bottom:1px solid var(--color-border);" role="listitem">
-          <code style="font-size:0.7rem;color:var(--color-text-muted);flex-shrink:0;width:90px;">${t.TaskID}</code>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:var(--font-sm);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ui._esc(t.Subject)}</div>
-            <div style="font-size:var(--font-xs);color:var(--color-text-muted);">Due: ${t.DueDate ? _fmtDate(t.DueDate) : '—'}</div>
-          </div>
-          <span class="status-pill status-${(t.Status||'pending').toLowerCase()}" style="flex-shrink:0;">${_fmtStatus(t.Status)}</span>
-          <button class="btn btn-ghost btn-sm" onclick="window.router&&window.router.navigate('review',{taskID:'${t.TaskID}'})" aria-label="View ${t.TaskID}">View</button>
-        </div>`).join('');
-      } catch(err) {
-        ui.toast('Dashboard Error', err.message, 'error');
-      }
-    }
-
-    /** Lightweight Staff-specific task creation (fallback if admin.js hasn't loaded yet) */
-    function openStaffCreateTask() {
-      // Delegate to admin.js modal if available
-      if (typeof window.openCreateTaskModal === 'function') {
-        window.openCreateTaskModal();
-      } else {
-        ui.toast('Loading', 'Task creation module is loading. Please try again in a moment.', 'info');
-      }
-    }
 
     // ══════════════════════════════════════════════════════════════════════
     // HELPER FORMATTERS

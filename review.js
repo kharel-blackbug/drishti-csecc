@@ -644,6 +644,85 @@ function injectReviewCSS() {
     40%          { transform: translateY(-6px); }
   }
 
+  /* ── STATUS CONTROL CARD ───────────────────────────────────────── */
+  .rv-status-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-4) var(--space-5);
+    margin-bottom: var(--space-5);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    box-shadow: var(--shadow-xs);
+  }
+  .rv-status-label {
+    font-size: var(--font-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-1);
+  }
+  .rv-status-select-wrap { display: flex; align-items: center; gap: var(--space-3); flex: 1; min-width: 180px; }
+  .rv-status-select {
+    flex: 1;
+    appearance: none;
+    -webkit-appearance: none;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-8) var(--space-2) var(--space-3);
+    font-size: var(--font-sm);
+    font-weight: 700;
+    font-family: inherit;
+    color: var(--color-text-primary);
+    background: var(--color-surface)
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")
+      no-repeat right 10px center;
+    cursor: pointer;
+    outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition);
+  }
+  .rv-status-select:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(15,118,110,0.15); }
+  .rv-status-select:disabled { opacity: 0.55; cursor: not-allowed; }
+  .rv-status-save-btn {
+    flex-shrink: 0;
+    font-size: var(--font-xs);
+    font-weight: 700;
+    padding: var(--space-2) var(--space-4);
+  }
+  .rv-status-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .rv-progress-edit-wrap {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 160px;
+    flex: 1;
+  }
+  .rv-progress-slider {
+    flex: 1;
+    height: 6px;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+  }
+  .rv-progress-slider:disabled { opacity: 0.5; cursor: not-allowed; }
+  .rv-progress-edit-val {
+    font-size: var(--font-sm);
+    font-weight: 700;
+    color: var(--color-text-primary);
+    min-width: 36px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .rv-status-readonly-note {
+    font-size: var(--font-xs);
+    color: var(--color-text-muted);
+    font-style: italic;
+    padding: var(--space-2) 0;
+  }
+
   /* ── QUICK ACTIONS BAR ──────────────────────────────────────────── */
   #rv-quick-actions {
     flex-shrink: 0;
@@ -836,6 +915,9 @@ function injectReviewOverlay() {
       <div class="rv-meta-header" id="rv-meta-header"></div>
       <h1 class="rv-subject" id="rv-subject">—</h1>
       <div class="rv-description" id="rv-description" aria-label="Task description">—</div>
+
+      <!-- Status + Progress editable card (populated by _renderStatusControl) -->
+      <div id="rv-status-control"></div>
 
       <div class="rv-meta-grid" id="rv-meta-grid" aria-label="Task metadata"></div>
 
@@ -1170,6 +1252,9 @@ function _renderLeftPanel() {
   _el('rv-subject').textContent     = t.Subject;
   _el('rv-description').textContent = t.Description || 'No description provided.';
 
+  // Status + Progress editable control
+  _renderStatusControl();
+
   // Metadata grid
   const depts = (t.AssignedDepts || '').split(',').join(' · ');
   _el('rv-meta-grid').innerHTML = [
@@ -1195,6 +1280,163 @@ function _renderLeftPanel() {
   fill.className  = 'rv-progress-fill ' + (pct < 30 ? 'low' : pct < 70 ? 'mid' : 'high');
   // Animate after paint
   requestAnimationFrame(() => { fill.style.width = pct + '%'; });
+}
+
+/**
+ * Renders the editable Status + Progress control card in the left panel.
+ * Visible to all roles; editable only by Super Admin, Chief Secretary, CSO Staff.
+ * Department role can update progress/remarks but not status.
+ */
+function _renderStatusControl() {
+  const el = _el('rv-status-control');
+  if (!el) return;
+
+  const t       = _task;
+  const role    = window.store?.session?.role;
+  const canEdit = ['Super Admin', 'Chief Secretary', 'Chief Secretary Office'].includes(role);
+  const deptEdit = role === 'Department'; // can change progress only
+
+  const STATUSES = [
+    { value: 'PENDING',     label: 'Pending',        color: '#D97706' },
+    { value: 'IN_PROGRESS', label: 'In Progress',     color: '#2A5F9E' },
+    { value: 'REVIEW',      label: 'Under Review',    color: '#0F766E' },
+    { value: 'COMPLETED',   label: 'Completed',       color: '#16A34A' },
+    { value: 'DEFERRED',    label: 'Deferred',        color: '#A3A3A3' },
+  ];
+
+  const current   = t.Status || 'PENDING';
+  const currentDef = STATUSES.find(s => s.value === current) || STATUSES[0];
+  const pct       = parseInt(t.ProgressPercent, 10) || 0;
+
+  el.innerHTML = `
+  <div class="rv-status-card" aria-label="Status and progress controls">
+
+    ${ canEdit ? `
+    <!-- STATUS SELECTOR (privileged roles) -->
+    <div style="flex:1;min-width:180px;">
+      <div class="rv-status-label">Task Status</div>
+      <div class="rv-status-select-wrap">
+        <select class="rv-status-select" id="rv-status-sel" aria-label="Change task status"
+          style="border-color:${currentDef.color};color:${currentDef.color};">
+          ${STATUSES.map(s => `
+            <option value="${s.value}" ${s.value === current ? 'selected' : ''}>${s.label}</option>
+          `).join('')}
+        </select>
+        <button class="btn btn-primary btn-sm rv-status-save-btn" id="rv-status-save-btn"
+          disabled aria-label="Save status change">
+          Save
+        </button>
+      </div>
+    </div>
+    ` : `
+    <!-- READ-ONLY STATUS (ReadOnly role) -->
+    <div style="flex:1;">
+      <div class="rv-status-label">Status</div>
+      <span class="status-pill status-${current.toLowerCase()}" style="font-size:var(--font-sm);">
+        ${_fmtStatus(current)}
+      </span>
+      ${ !deptEdit ? '<div class="rv-status-readonly-note">Read-only — contact CS or Super Admin to change status.</div>' : '' }
+    </div>
+    `}
+
+    <!-- PROGRESS SLIDER (dept + privileged) -->
+    ${ (canEdit || deptEdit) ? `
+    <div style="flex:1;min-width:160px;">
+      <div class="rv-status-label">Progress · <span id="rv-pct-edit-lbl">${pct}%</span></div>
+      <div class="rv-progress-edit-wrap">
+        <input type="range" class="rv-progress-slider" id="rv-pct-slider"
+          min="0" max="100" step="5" value="${pct}"
+          aria-label="Task progress percentage" />
+        <button class="btn btn-secondary btn-sm rv-status-save-btn" id="rv-pct-save-btn"
+          disabled aria-label="Save progress">
+          Save
+        </button>
+      </div>
+    </div>
+    ` : `
+    <div style="flex:1;min-width:140px;">
+      <div class="rv-status-label">Progress</div>
+      <div style="font-size:1.4rem;font-weight:800;color:var(--color-text-primary);">${pct}%</div>
+    </div>
+    `}
+
+  </div>`;
+
+  // ── Wire status selector ─────────────────────────────────────────────────
+  if (canEdit) {
+    const sel     = _el('rv-status-sel');
+    const saveBtn = _el('rv-status-save-btn');
+
+    sel.addEventListener('change', function() {
+      const changed = sel.value !== current;
+      saveBtn.disabled = !changed;
+      // Update border color to reflect selection
+      const def = STATUSES.find(s => s.value === sel.value) || STATUSES[0];
+      sel.style.borderColor = def.color;
+      sel.style.color       = def.color;
+    });
+
+    saveBtn.addEventListener('click', async function() {
+      const newStatus = sel.value;
+      if (!newStatus || newStatus === current) return;
+      saveBtn.disabled = true;
+      saveBtn.textContent = '…';
+      try {
+        await window.api('updateTask', { taskID: t.TaskID, status: newStatus });
+        // Update local task object
+        _task.Status = newStatus;
+        // Refresh topbar badges and meta-header without full reload
+        _renderTopbar();
+        _renderLeftPanel();       // re-renders this control with new status
+        _updateQuickActions();
+        window.ui?.toast('Status Updated',
+          t.TaskID + ' → ' + _fmtStatus(newStatus), 'success', 3000);
+        // Refresh task list cache if it's loaded
+        if (typeof window.loadTasks === 'function') window.loadTasks();
+      } catch (err) {
+        window.ui?.toast('Update Failed', err.message, 'error');
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save';
+      }
+    });
+  }
+
+  // ── Wire progress slider ─────────────────────────────────────────────────
+  if (canEdit || deptEdit) {
+    const slider  = _el('rv-pct-slider');
+    const lbl     = _el('rv-pct-edit-lbl');
+    const pctBtn  = _el('rv-pct-save-btn');
+
+    slider.addEventListener('input', function() {
+      if (lbl) lbl.textContent = slider.value + '%';
+      pctBtn.disabled = parseInt(slider.value, 10) === pct;
+    });
+
+    pctBtn.addEventListener('click', async function() {
+      const newPct = parseInt(slider.value, 10);
+      pctBtn.disabled = true;
+      pctBtn.textContent = '…';
+      try {
+        await window.api('updateProgress', { taskID: t.TaskID, progressPercent: newPct });
+        _task.ProgressPercent = String(newPct);
+        // Update main progress bar
+        const fill   = _el('rv-progress-fill');
+        const pctLbl = _el('rv-pct-label');
+        if (pctLbl) pctLbl.textContent = newPct + '%';
+        if (fill) {
+          fill.className = 'rv-progress-fill ' + (newPct < 30 ? 'low' : newPct < 70 ? 'mid' : 'high');
+          fill.style.width = newPct + '%';
+        }
+        // Re-render the control with new value
+        _renderStatusControl();
+        window.ui?.toast('Progress Updated', newPct + '% saved.', 'success', 2000);
+      } catch (err) {
+        window.ui?.toast('Update Failed', err.message, 'error');
+        pctBtn.disabled = false;
+        pctBtn.textContent = 'Save';
+      }
+    });
+  }
 }
 
 function _renderTimeline() {
@@ -1347,21 +1589,45 @@ function _renderNavBar() {
 }
 
 function _updateQuickActions() {
+  const role     = window.store?.session?.role;
+  const canEdit  = ['Super Admin', 'Chief Secretary', 'Chief Secretary Office'].includes(role);
+  const canPin   = ['Super Admin', 'Chief Secretary'].includes(role);
+  const isDept   = role === 'Department';
+
+  // Pin/unpin label
   const pinBtn = _el('rv-qa-pin');
-  if (_task?.IsPinned === 'TRUE') {
-    pinBtn.querySelector('.rv-action-label').textContent = 'Unpin Task';
-    pinBtn.querySelector('.rv-action-icon').textContent  = '📍';
-  } else {
-    pinBtn.querySelector('.rv-action-label').textContent = 'Pin Task';
-    pinBtn.querySelector('.rv-action-icon').textContent  = '📌';
+  if (pinBtn) {
+    if (_task?.IsPinned === 'TRUE') {
+      pinBtn.querySelector('.rv-action-label').textContent = 'Unpin Task';
+      pinBtn.querySelector('.rv-action-icon').textContent  = '📍';
+    } else {
+      pinBtn.querySelector('.rv-action-label').textContent = 'Pin Task';
+      pinBtn.querySelector('.rv-action-icon').textContent  = '📌';
+    }
+    // Only CS and Admin can pin
+    pinBtn.style.display = canPin ? '' : 'none';
   }
 
+  // Approve button: only for privileged roles
   const approveBtn = _el('rv-qa-approve');
-  if (_task?.Status === 'REVIEW') {
-    approveBtn.querySelector('.rv-action-label').textContent = 'Mark Completed';
-  } else {
-    approveBtn.querySelector('.rv-action-label').textContent = 'Mark Reviewed';
+  if (approveBtn) {
+    approveBtn.style.display = canEdit ? '' : 'none';
+    if (_task?.Status === 'REVIEW') {
+      approveBtn.querySelector('.rv-action-label').textContent = 'Mark Completed';
+    } else {
+      approveBtn.querySelector('.rv-action-label').textContent = 'Mark Reviewed';
+    }
   }
+
+  // Direction & Reminder: privileged + dept can add directions
+  const dirBtn = _el('rv-qa-direction');
+  if (dirBtn) dirBtn.style.display = (canEdit || isDept) ? '' : 'none';
+
+  const remBtn = _el('rv-qa-reminder');
+  if (remBtn) remBtn.style.display = canEdit ? '' : 'none';
+
+  const emailBtn = _el('rv-qa-email');
+  if (emailBtn) emailBtn.style.display = canEdit ? '' : 'none';
 }
 
 

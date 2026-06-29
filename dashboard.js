@@ -1806,12 +1806,17 @@ function _renderAllSections(data) {
 function initDashboard() {
   injectDashboardCSS();
 
-  // Scaffold is injected once; subsequent calls just refresh data
   const panel = document.getElementById('view-dashboard');
   if (!panel) return;
 
   const alreadyInjected = panel.querySelector('#db-header');
   if (!alreadyInjected) {
+    // Panel was cleared (logout/role switch) or first load — inject fresh scaffold
+    // Destroy any lingering chart instances first to prevent canvas re-use errors
+    [_chartStatus, _chartPriority, _chartTrend].forEach(function(c) {
+      if (c) { try { c.destroy(); } catch(e) {} }
+    });
+    _chartStatus = _chartPriority = _chartTrend = null;
     injectDashboardScaffold();
   }
 
@@ -1871,12 +1876,44 @@ document.addEventListener('drishti:viewchange', (e) => {
 /**
  * If the page loads directly on #dashboard (or no hash), init immediately
  * once the main app is shown. We wait for the `drishti:appready` event
- * which index.html fires after showApp().
+ * which index.html fires after showApp() (deferred one frame to ensure all
+ * module scripts have registered their listeners first).
+ *
+ * Handles: Chief Secretary, Read Only, CSO Staff, and any non-admin non-dept role.
+ * Super Admin is handled by admin.js. Department role is handled by dept.js.
  */
 document.addEventListener('drishti:appready', () => {
   const hash = window.location.hash.replace('#','') || 'dashboard';
-  if (hash === 'dashboard' || hash === '') initDashboard();
+  const role = window.store?.session?.role;
+  const isAdmin = role === 'Super Admin';
+  const isDept  = role === 'Department';
+  // Dashboard.js renders for CS, ReadOnly, Staff, and any other non-admin/non-dept role
+  if ((hash === 'dashboard' || hash === '') && !isAdmin && !isDept) {
+    initDashboard();
+  }
 });
 
 // Also expose globally for direct calls from index.html if needed
 window.initDashboard = initDashboard;
+
+/**
+ * Clears all dashboard module-level state.
+ * Called by showLogin() in index.html on logout/session switch to prevent
+ * User A's data appearing on User B's first render.
+ */
+window.resetDashboardState = function() {
+  // Bust data cache so next render fetches fresh data for the new session
+  _dashCache   = null;
+  _dashCacheTs = 0;
+
+  // Destroy chart instances — prevents canvas re-use errors and memory leaks
+  [_chartStatus, _chartPriority, _chartTrend].forEach(function(chart) {
+    if (chart) { try { chart.destroy(); } catch(e) {} }
+  });
+  _chartStatus   = null;
+  _chartPriority = null;
+  _chartTrend    = null;
+
+  // Clear Chart.js load promise so it re-registers cleanly if CDN changes
+  _chartJsLoading = null;
+};
