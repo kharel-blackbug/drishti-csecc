@@ -1869,22 +1869,65 @@ ul, ol { list-style: none; }
     box-shadow: var(--shadow-xl);
   }
 
+  /* Backdrop overlay when sidebar slides open on mobile */
+  #sidebar.mobile-open::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    left: var(--sidebar-width);
+    background: rgba(0,0,0,0.4);
+    z-index: -1;
+  }
+
   .grid-2 { grid-template-columns: 1fr; }
   .grid-3 { grid-template-columns: 1fr; }
   .grid-4 { grid-template-columns: 1fr; }
   .grid-kpi { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .kpi-value { font-size: 2rem; }
   .kpi-card { padding: 16px; }
+  /* Mobile menu button: show via CSS — overrides inline style="display:none" */
+  #mobile-menu-btn { display: flex !important; }
   .topbar-search { display: none; }
-  .view-container { padding: var(--space-4); }
+  .view-container { padding: var(--space-4) var(--space-3); }
   .view-header { flex-direction: column; align-items: flex-start; }
-  .view-actions { flex-wrap: wrap; }
+  .view-actions { flex-wrap: wrap; width: 100%; }
+
+  /* Task table: hide Progress column, keep core columns visible */
+  #tasks-table th:nth-child(7),
+  #tasks-table td:nth-child(7) { display: none; }
+
+  /* Topbar: truncate titles on medium mobile */
+  .topbar-page-title  { font-size: var(--font-base); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
+  .topbar-page-subtitle { display: none; }
+
+  /* Filter bar: stack on mobile */
+  #task-filter-bar { gap: var(--space-2); }
+  #task-filter-bar .select, #task-filter-bar .input { width: 100%; }
+
+  /* Modals: reduce overlay padding so dialogs have more space */
+  .modal-overlay, [role="dialog"] > div { margin: var(--space-3); }
 }
 
 @media (max-width: 480px) {
   .grid-kpi { grid-template-columns: 1fr 1fr; gap: 8px; }
   .kpi-value { font-size: 1.75rem; }
   .modal { border-radius: var(--radius-md); }
+  .view-container { padding: var(--space-3) var(--space-3); }
+
+  /* Task table: also hide Due Date column at very small screens to prevent overflow */
+  #tasks-table th:nth-child(6),
+  #tasks-table td:nth-child(6) { display: none; }
+
+  /* Task table: Department column truncation */
+  #tasks-table td:nth-child(3) { max-width: 70px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Topbar: compact */
+  .topbar-page-title { max-width: 110px; font-size: var(--font-sm); }
+  #topbar-page-subtitle { display: none; }
+
+  /* Make touch targets a min 44px tall */
+  .btn { min-height: 44px; }
+  .sidebar-item { min-height: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

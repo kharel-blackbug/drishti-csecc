@@ -446,6 +446,36 @@ function injectAdminCSS() {
     .adm-kpi-grid    { grid-template-columns: 1fr 1fr; }
     .adm-quick-links { grid-template-columns: 1fr 1fr; }
     .adm-setting-row { grid-template-columns: 1fr; gap: var(--space-2); }
+    /* User table: hide non-essential columns on mobile */
+    .adm-table th:nth-child(6),
+    .adm-table td:nth-child(6) { display: none; }  /* Last Login */
+    /* Audit filter bar: 2-col on tablet */
+    .adm-audit-filters { grid-template-columns: 1fr 1fr; }
+    /* Modals: full width on mobile */
+    .adm-task-form-card,
+    .adm-user-card,
+    .adm-broadcast-card { max-width: 100%; margin: var(--space-3); }
+    #adm-create-task-modal,
+    #adm-user-modal,
+    #adm-broadcast-modal,
+    #adm-add-dept-modal { padding: var(--space-3); align-items: flex-start; padding-top: var(--space-4); }
+    /* User action buttons: stack them */
+    .adm-table td div[style*="display:flex"] { flex-wrap: wrap; gap: 4px !important; }
+  }
+  @media (max-width: 480px) {
+    .adm-kpi-grid       { grid-template-columns: 1fr 1fr; }
+    .adm-quick-links    { grid-template-columns: 1fr 1fr; }
+    .adm-audit-filters  { grid-template-columns: 1fr; }
+    /* User table: hide more columns at 480px */
+    .adm-table th:nth-child(4),
+    .adm-table td:nth-child(4) { display: none; }  /* Department */
+    /* Table wrap: ensure horizontal scroll */
+    .adm-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    /* Task form modal: full height scroll */
+    .adm-task-form-card { max-height: calc(100vh - 24px); overflow-y: auto; }
+    /* Priority group: 2 per row on mobile */
+    .adm-priority-group { gap: var(--space-2); }
+    .adm-priority-label { font-size: var(--font-xs); padding: var(--space-1) var(--space-3); }
   }
   `;
   document.head.appendChild(s);

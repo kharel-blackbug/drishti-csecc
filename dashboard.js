@@ -752,12 +752,50 @@ function injectDashboardCSS() {
     .db-row5     { grid-template-columns: 1fr; }
   }
   @media (max-width: 768px) {
-    .db-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .db-kpi-grid   { grid-template-columns: repeat(2, 1fr); }
     #db-speed-dial { bottom: var(--space-5); right: var(--space-5); }
     .db-search-box { max-width: calc(100vw - 32px); }
+
+    /* Charts: constrain height so they don't dominate mobile screen */
+    .db-chart-wrap { max-height: 200px !important; }
+    .db-charts-row { flex-direction: column; gap: var(--space-4); }
+    .db-chart-card { flex: none; }
+
+    /* AI quick bar: stack input above button on mobile */
+    .db-ai-quick { flex-direction: column; }
+    .db-ai-quick .input { width: 100%; }
+    .db-ai-quick .btn   { width: 100%; justify-content: center; }
+
+    /* Dept table: allow horizontal scroll and hide less-important columns */
+    .db-dept-panel { overflow: hidden; }
+    .db-dept-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .db-dept-table th:nth-child(4),
+    .db-dept-table td:nth-child(4),
+    .db-dept-table th:nth-child(7),
+    .db-dept-table td:nth-child(7) { display: none; }  /* Pending, Status */
+
+    /* Header: stack actions below title */
+    .db-header { flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+    .db-header-actions { flex-wrap: wrap; gap: var(--space-2); }
   }
   @media (max-width: 480px) {
-    .db-kpi-grid { grid-template-columns: 1fr 1fr; }
+    .db-kpi-grid   { grid-template-columns: 1fr 1fr; }
+    .db-kpi-value  { font-size: 1.6rem; }
+
+    /* Charts: shorter on small phone */
+    .db-chart-wrap { max-height: 160px !important; }
+
+    /* Speed dial: smaller on tiny screens */
+    .db-fab.main-fab { width: 48px; height: 48px; font-size: 1.2rem; }
+    .db-fab          { width: 38px; height: 38px; }
+
+    /* Heatmap: slightly smaller cells */
+    .db-hm-cell { width: 10px; height: 10px; }
+    .db-hm-week { gap: 2px; }
+    .db-heatmap-grid { gap: 2px; }
+
+    /* Row 5 pinned/alerts: single compact card */
+    .db-pinned-row, .db-alert-row { flex-wrap: wrap; }
   }
   `;
   document.head.appendChild(style);

@@ -858,14 +858,50 @@ function injectReviewCSS() {
 
   /* ── RESPONSIVE ─────────────────────────────────────────────────── */
   @media (max-width: 900px) {
-    #rv-body { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
-    #rv-left { border-right: none; border-bottom: 1px solid var(--color-border); }
+    #rv-body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+    #rv-left {
+      border-right: none;
+      border-bottom: 1px solid var(--color-border);
+      /* Cap the left panel height in stacked layout so right panel stays visible */
+      max-height: 55vh;
+      overflow-y: auto;
+    }
+    /* Topbar: hide subject text, keep ID + badges readable */
+    .rv-topbar-subject { display: none; }
+    .rv-topbar-badges  { flex-wrap: wrap; gap: 4px; }
+    /* Status card: stack controls vertically */
+    .rv-status-card { flex-direction: column; gap: var(--space-3); }
+    .rv-status-select-wrap { min-width: 0; }
+    .rv-progress-edit-wrap { min-width: 0; }
   }
   @media (max-width: 600px) {
-    #rv-body { grid-template-rows: auto 1fr; }
+    #rv-left { max-height: 50vh; }
+    /* Action labels hidden — icon-only quick actions */
     .rv-action-label { display: none; }
-    .rv-action-btn   { padding: var(--space-2); }
+    .rv-action-btn   { padding: var(--space-2); min-width: 44px; min-height: 44px; justify-content: center; }
+    .rv-action-icon  { font-size: 1.15rem; }
+    /* Meta grid: single column */
     .rv-meta-grid    { grid-template-columns: 1fr; }
+    /* File grid: single column on small screens */
+    .rv-file-grid    { grid-template-columns: 1fr; }
+    /* Comment bubbles: full width */
+    .rv-comment-wrap.mine .rv-bubble,
+    .rv-comment-wrap.theirs .rv-bubble { max-width: 95%; }
+    /* Upload zone: compact */
+    .rv-upload-zone { padding: var(--space-4); }
+    /* Navigation bar: compact */
+    .rv-nav-btn { padding: var(--space-1) var(--space-3); font-size: var(--font-xs); }
+    #rv-nav-bar { padding: 0 var(--space-3); }
+    /* Topbar: compact */
+    #rv-topbar { padding: 0 var(--space-3); gap: var(--space-2); }
+    .rv-back-btn { padding: var(--space-1) var(--space-2); font-size: var(--font-xs); }
+  }
+  @media (max-width: 400px) {
+    /* Status control: stack selects on very small screens */
+    .rv-status-select { font-size: var(--font-xs); }
+    .rv-status-card   { padding: var(--space-3); }
+    /* Progress edit value: smaller */
+    .rv-progress-edit-val { min-width: 28px; font-size: var(--font-xs); }
   }
   `;
   document.head.appendChild(s);
