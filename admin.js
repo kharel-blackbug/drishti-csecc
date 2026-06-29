@@ -1167,7 +1167,13 @@ function _showFormError(msg) {
 }
 
 function openCreateTaskModal() {
-  if (!_guardAdmin()) return;
+  // Allow Super Admin, Chief Secretary, and Staff to create tasks
+  const role = window.store?.session?.role;
+  const canCreate = ['Super Admin','Chief Secretary','Staff'].includes(role);
+  if (!canCreate) {
+    window.ui?.toast('Access Denied', 'Task creation requires Super Admin, Chief Secretary, or Staff role.', 'error');
+    return;
+  }
   _injectCreateTaskModal();
   _resetCreateForm();
   _el('adm-create-success').style.display   = 'none';
@@ -1212,6 +1218,7 @@ async function renderUsersView() {
         <option>Chief Secretary</option>
         <option>Department</option>
         <option>Read Only</option>
+        <option>Staff</option>
       </select>
       <button class="btn btn-primary btn-sm" id="adm-add-user-btn" aria-label="Add new user">+ Add User</button>
     </div>
@@ -1376,6 +1383,7 @@ function _injectUserModal() {
             <option value="Chief Secretary">Chief Secretary</option>
             <option value="Department" selected>Department</option>
             <option value="Read Only">Read Only</option>
+            <option value="Staff">Staff</option>
           </select>
         </div>
         <div class="form-group" id="adm-um-dept-group">
@@ -1406,9 +1414,9 @@ function _injectUserModal() {
   _el('adm-user-modal').addEventListener('click', e => { if(e.target===_el('adm-user-modal')) _el('adm-user-modal').classList.remove('open'); });
   _on('adm-um-submit','click', _submitUserForm);
 
-  // Show/hide dept field based on role
+  // Show/hide dept field based on role (Department + Staff roles need a dept)
   _el('adm-um-role')?.addEventListener('change', () => {
-    const showDept = _el('adm-um-role').value === 'Department';
+    const showDept = ['Department','Staff'].includes(_el('adm-um-role').value);
     _el('adm-um-dept-group').style.display = showDept ? '' : 'none';
   });
 
@@ -1442,7 +1450,7 @@ async function _openUserModal(user) {
   if (pwLabel) pwLabel.innerHTML = isEdit ? 'New Password <span style="color:var(--color-text-muted);font-weight:400;">(leave blank to keep)</span>' : 'Password <span style="color:var(--color-danger)">*</span>';
 
   // Show/hide dept
-  const showDept = (_el('adm-um-role').value === 'Department');
+  const showDept = ['Department','Staff'].includes(_el('adm-um-role').value);
   _el('adm-um-dept-group').style.display = showDept ? '' : 'none';
 
   // Populate dept dropdown if needed
@@ -1527,6 +1535,116 @@ async function _submitUserForm() {
 // G — DEPARTMENT MANAGEMENT VIEW
 // ═════════════════════════════════════════════════════════════════════════════
 
+// ── Add Department Modal ──────────────────────────────────────────────────────
+
+function _injectAddDeptModal() {
+  if (_el('adm-add-dept-modal')) return;
+  const m = document.createElement('div');
+  m.id = 'adm-add-dept-modal';
+  m.setAttribute('role','dialog');
+  m.setAttribute('aria-modal','true');
+  m.setAttribute('aria-labelledby','adm-add-dept-title');
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:7600;display:flex;align-items:center;justify-content:center;padding:var(--space-6);opacity:0;visibility:hidden;transition:opacity 0.2s ease,visibility 0.2s ease;';
+  m.innerHTML = `
+  <div style="background:var(--color-surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-xl);width:100%;max-width:520px;overflow:hidden;transform:scale(0.96) translateY(-12px);transition:transform 0.25s cubic-bezier(0.34,1.56,0.64,1);" id="adm-add-dept-card">
+    <div class="modal-header" style="background:var(--color-primary);">
+      <div class="modal-title" id="adm-add-dept-title" style="color:#fff;">Add New Department</div>
+      <button class="icon-btn" id="adm-add-dept-close" aria-label="Close" style="color:rgba(255,255,255,0.7);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:var(--space-4);">
+      <div class="grid grid-2" style="gap:var(--space-4);">
+        <div class="form-group">
+          <label class="form-label" for="adm-nd-code">Department Code <span style="color:var(--color-danger)">*</span></label>
+          <input type="text" class="input" id="adm-nd-code" placeholder="e.g. PWD" style="text-transform:uppercase;" aria-required="true" />
+          <div class="form-hint">2–12 uppercase letters/numbers. Cannot be changed later.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="adm-nd-short">Short Name</label>
+          <input type="text" class="input" id="adm-nd-short" placeholder="e.g. PWD" aria-label="Short name" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="adm-nd-name">Full Department Name <span style="color:var(--color-danger)">*</span></label>
+        <input type="text" class="input" id="adm-nd-name" placeholder="e.g. Public Works Department" aria-required="true" />
+      </div>
+      <div class="grid grid-2" style="gap:var(--space-4);">
+        <div class="form-group">
+          <label class="form-label" for="adm-nd-hod-name">Head of Department</label>
+          <input type="text" class="input" id="adm-nd-hod-name" placeholder="Full name" aria-label="HOD name" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="adm-nd-hod-email">HOD Email</label>
+          <input type="email" class="input" id="adm-nd-hod-email" placeholder="hod@sikkim.gov.in" aria-label="HOD email" />
+        </div>
+      </div>
+      <div id="adm-nd-error" class="form-error" role="alert"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="adm-nd-cancel">Cancel</button>
+      <button class="btn btn-primary" id="adm-nd-submit">Create Department</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+
+  ['adm-add-dept-close','adm-nd-cancel'].forEach(id => _on(id,'click',()=>{ m.classList.remove('open'); m.style.opacity='0'; m.style.visibility='hidden'; }));
+  m.addEventListener('click', e => { if(e.target===m){ m.style.opacity='0'; m.style.visibility='hidden'; } });
+  _on('adm-nd-code','input',function(){ this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
+  _on('adm-nd-submit','click',_submitAddDept);
+}
+
+async function _submitAddDept() {
+  const errEl = _el('adm-nd-error');
+  const btn   = _el('adm-nd-submit');
+  if (errEl) { errEl.textContent=''; errEl.classList.remove('visible'); }
+
+  const deptCode  = (_el('adm-nd-code')?.value||'').trim().toUpperCase();
+  const deptName  = (_el('adm-nd-name')?.value||'').trim();
+  const deptShort = (_el('adm-nd-short')?.value||'').trim() || deptCode;
+  const hodName   = (_el('adm-nd-hod-name')?.value||'').trim();
+  const hodEmail  = (_el('adm-nd-hod-email')?.value||'').trim();
+
+  if (!deptCode) { if(errEl){errEl.textContent='Department code is required.';errEl.classList.add('visible');} return; }
+  if (!deptName) { if(errEl){errEl.textContent='Department name is required.';errEl.classList.add('visible');} return; }
+  if (!/^[A-Z0-9]{2,12}$/.test(deptCode)) { if(errEl){errEl.textContent='Code must be 2–12 uppercase letters/numbers.';errEl.classList.add('visible');} return; }
+
+  if (btn) { btn.disabled=true; btn.textContent='Creating…'; }
+  try {
+    await window.api('createDepartment', { deptCode, deptName, deptShortName: deptShort, hodName, hodEmail });
+    // Close modal
+    const modal = _el('adm-add-dept-modal');
+    if (modal) { modal.style.opacity='0'; modal.style.visibility='hidden'; }
+    window.ui?.toast('Department Created', deptCode + ' — ' + deptName + ' added.', 'success');
+    // Force refresh
+    _departments = [];
+    window._preloadedDepts = null;
+    // Re-render the dept view
+    renderDepartmentsView();
+    // Reload preloaded depts for create task modal
+    window.api('getDepartments',{}).then(function(d){ window._preloadedDepts=d||[]; }).catch(()=>{});
+  } catch(err) {
+    if(errEl){errEl.textContent=err.message;errEl.classList.add('visible');}
+    window.ui?.toast('Error',err.message,'error');
+  } finally {
+    if (btn) { btn.disabled=false; btn.textContent='Create Department'; }
+  }
+}
+
+function openAddDeptModal() {
+  _injectAddDeptModal();
+  ['adm-nd-code','adm-nd-name','adm-nd-short','adm-nd-hod-name','adm-nd-hod-email'].forEach(id=>{
+    const el=_el(id); if(el) el.value='';
+  });
+  _el('adm-nd-error')?.classList.remove('visible');
+  const m=_el('adm-add-dept-modal');
+  if(m){m.style.opacity='1';m.style.visibility='visible';}
+  const card=_el('adm-add-dept-card');
+  if(card){card.style.transform='scale(1) translateY(0)';}
+  setTimeout(()=>_el('adm-nd-code')?.focus(),80);
+}
+window.openAddDeptModal = openAddDeptModal;
+
 async function renderDepartmentsView() {
   if (!_guardAdmin()) return;
   injectAdminCSS();
@@ -1537,10 +1655,11 @@ async function renderDepartmentsView() {
   <div class="view-header">
     <div>
       <div class="view-title">Department Management</div>
-      <div class="view-subtitle">Edit HOD details · View task counts · Add new departments</div>
+      <div class="view-subtitle">Add departments · Edit HOD details · View task counts</div>
     </div>
     <div class="view-actions">
-      <button class="btn btn-primary btn-sm" id="adm-save-depts-btn" aria-label="Save all department changes" style="display:none;">Save Changes</button>
+      <button class="btn btn-primary btn-sm" id="adm-add-dept-btn" aria-label="Add a new department">+ Add Department</button>
+      <button class="btn btn-secondary btn-sm" id="adm-save-depts-btn" aria-label="Save all department changes" style="display:none;">Save Changes</button>
     </div>
   </div>
   <div class="adm-table-wrap" id="adm-dept-table-wrap">
@@ -1549,6 +1668,7 @@ async function renderDepartmentsView() {
     </div>
   </div>`;
 
+  _on('adm-add-dept-btn','click', openAddDeptModal);
   _on('adm-save-depts-btn','click', function() { _saveDeptChanges(); });
 
   try {
@@ -1614,9 +1734,9 @@ async function renderDepartmentsView() {
         </tr>`).join('')}
       </tbody>
     </table>
-    <div style="padding:var(--space-4) var(--space-5);border-top:1px solid var(--color-border);background:var(--color-surface-2);">
+    <div style="padding:var(--space-4) var(--space-5);border-top:1px solid var(--color-border);background:var(--color-surface-2);display:flex;align-items:center;justify-content:space-between;">
       <div style="font-size:var(--font-xs);color:var(--color-text-muted);">
-        ${_departments.length} departments · To add a new department, use the Apps Script console to run <code>seedDepartments()</code> after updating the SIKKIM_DEPARTMENTS array in Module 1.
+        ${_departments.length} department${_departments.length!==1?'s':''} · Click <strong>+ Add Department</strong> to create a new department. Changes apply immediately.
       </div>
     </div>`;
 
@@ -2147,3 +2267,18 @@ document.addEventListener('drishti:appready', () => {
   if (hash === 'audit')                    renderAuditView();
   if (hash === 'settings')                 renderSettingsView();
 });
+
+/**
+ * Clears all admin module caches. Call this on logout / user switch to
+ * prevent stale data from one session bleeding into the next.
+ */
+window.resetAdminState = function() {
+  _users        = [];
+  _departments  = [];
+  _auditRows    = [];
+  _settings     = [];
+  _auditPage    = 1;
+  _auditFilters = { dateFrom:'', dateTo:'', user:'', action:'' };
+  _selectedDepts.clear();
+  _allDeptsList  = [];
+};
