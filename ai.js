@@ -935,14 +935,14 @@ function renderAIView() {
 
   // Check role — AI is for CS and Admin only
   const role = window.store?.session?.role;
-  if (!['Super Admin', 'Chief Secretary'].includes(role)) {
+  if (!['TIGER', 'Chief Secretary'].includes(role)) {
     panel.innerHTML = `
     <div class="empty-state" style="padding:var(--space-12);">
       <div class="empty-state-icon">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
       </div>
       <div class="empty-state-title">Access Restricted</div>
-      <div class="empty-state-desc">The AI Assistant is available to Chief Secretary and Super Admin only.</div>
+      <div class="empty-state-desc">The AI Assistant is available to Chief Secretary and TIGER only.</div>
     </div>`;
     return;
   }
