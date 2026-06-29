@@ -941,9 +941,14 @@ async function _buildDeptCheckboxes() {
   const box = _el('ct-dept-checkboxes');
   if (!box) return;
   if (!_departments.length) {
-    box.innerHTML = '<div style="padding:8px;font-size:12px;color:var(--color-text-muted);">Loading departments…</div>';
-    try { _departments = await window.api('getDepartments',{}); }
-    catch { _departments = []; }
+    // Use preloaded departments if available (loaded at app start for instant UX)
+    if (window._preloadedDepts && window._preloadedDepts.length) {
+      _departments = window._preloadedDepts;
+    } else {
+      box.innerHTML = '<div style="padding:8px;font-size:12px;color:var(--color-text-muted);">Loading departments…</div>';
+      try { _departments = await window.api('getDepartments',{}); }
+      catch { _departments = []; }
+    }
   }
   _allDeptsList = _departments;
   box.innerHTML = _allDeptsList.map(d => `

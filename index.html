@@ -3232,6 +3232,27 @@ ul, ol { list-style: none; }
     function showLogin() {
       document.getElementById('login-view').classList.add('active');
       document.getElementById('app').classList.remove('active');
+
+      // Clear ALL view panel content so the next user starts completely fresh.
+      // Without this, module guards like "if (getElementById('db-header')) return"
+      // prevent re-rendering, leaving the previous user's data visible.
+      document.querySelectorAll('.view-panel').forEach(function(p) {
+        p.innerHTML = '';
+        p.classList.remove('active');
+      });
+
+      // Reset the sidebar active state
+      document.querySelectorAll('.sidebar-item').forEach(function(item) {
+        item.classList.remove('active');
+        item.setAttribute('aria-current', 'false');
+      });
+
+      // Clear module-level caches exposed on window
+      if (typeof window.invalidateAPICache === 'function') {
+        ['getDashboardStats','getHeatmapData','getDepartmentPerformance',
+         'getDepartments','getSettings','getTasks','getUsers','getAuditLog']
+          .forEach(function(k) { window.invalidateAPICache(k); });
+      }
     }
 
     function showApp(goToDashboard = false) {
@@ -3252,6 +3273,10 @@ ul, ol { list-style: none; }
       router.resolve();
       // Signal all module scripts that the app shell is ready
       document.dispatchEvent(new CustomEvent('drishti:appready'));
+      // Preload departments in background so Create Task modal opens instantly
+      api('getDepartments', {}).then(function(depts) {
+        window._preloadedDepts = depts || [];
+      }).catch(function() {});
     }
 
     function populateUserUI() {
