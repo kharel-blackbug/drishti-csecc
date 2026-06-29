@@ -2131,6 +2131,61 @@ async function renderSettingsView() {
       <button class="btn btn-primary btn-sm" id="adm-settings-save" aria-label="Save all modified settings">Save Changes</button>
     </div>
   </div>
+
+  <!-- ── Google Calendar Sync Card ────────────────────────────────────── -->
+  <div class="card" id="adm-cal-card" style="margin-bottom:var(--space-5);">
+    <div class="card-header">
+      <div class="card-title" style="display:flex;align-items:center;gap:var(--space-2);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Google Calendar Sync
+      </div>
+      <span class="badge" id="adm-cal-status-badge" style="font-size:0.7rem;">Loading…</span>
+    </div>
+    <div style="padding:var(--space-5);display:flex;flex-direction:column;gap:var(--space-4);">
+      <p style="font-size:var(--font-sm);color:var(--color-text-secondary);line-height:1.6;margin:0;">
+        When enabled, every DRISHTI task is automatically synced to Google Calendar as an all-day event on its due date.
+        Events are colour-coded by status: 🟡 Pending · 🔵 In Progress · 🟢 Completed · 🔴 Overdue.
+      </p>
+
+      <div style="display:grid;grid-template-columns:1fr auto;gap:var(--space-4);align-items:flex-end;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label" for="adm-cal-id">Calendar ID</label>
+          <input type="text" class="input" id="adm-cal-id"
+            placeholder="e.g. abc123@group.calendar.google.com  (leave blank for default calendar)"
+            aria-describedby="adm-cal-id-hint" />
+          <div class="form-hint" id="adm-cal-id-hint">
+            Find it in Google Calendar → Settings → [Your Calendar] → Calendar ID.
+            Leave blank to sync to the script owner's primary calendar.
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:var(--space-2);flex-shrink:0;">
+          <label style="display:flex;align-items:center;gap:var(--space-2);cursor:pointer;font-size:var(--font-sm);font-weight:600;user-select:none;">
+            <input type="checkbox" id="adm-cal-enabled" style="width:16px;height:16px;accent-color:var(--color-primary);" aria-label="Enable Google Calendar sync" />
+            Enable Sync
+          </label>
+          <button class="btn btn-primary btn-sm" id="adm-cal-save-btn" aria-label="Save calendar settings">
+            Save Settings
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;padding-top:var(--space-2);border-top:1px solid var(--color-border);">
+        <button class="btn btn-secondary btn-sm" id="adm-cal-sync-btn" aria-label="Sync all tasks to Google Calendar now">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          Sync All Tasks Now
+        </button>
+        <div id="adm-cal-sync-result" style="font-size:var(--font-xs);color:var(--color-text-muted);display:flex;align-items:center;"></div>
+      </div>
+
+      <div style="background:var(--color-info-light);border-left:3px solid var(--color-info);border-radius:var(--radius-xs);padding:var(--space-3) var(--space-4);font-size:var(--font-xs);color:var(--color-text-secondary);line-height:1.7;">
+        <strong>First-time setup:</strong> After enabling, click <em>Sync All Tasks Now</em> to back-fill existing tasks.
+        New tasks will sync automatically after that. You may also run <code>syncAllTasksToCalendar()</code>
+        directly from the Apps Script editor.
+      </div>
+    </div>
+  </div>
+
+  <!-- ── App Settings Table ────────────────────────────────────────────── -->
   <div class="card" id="adm-settings-card">
     <div style="padding:var(--space-6);text-align:center;">
       <div class="rv-spinner" style="margin:auto;"></div>
@@ -2139,6 +2194,65 @@ async function renderSettingsView() {
 
   _on('adm-settings-save','click', _saveAllSettings);
 
+  // ── Load calendar status ─────────────────────────────────────────────────
+  try {
+    const calStatus = await window.api('getCalendarStatus', {}).catch(() => ({ enabled: false, calendarID: '' }));
+    const badge     = _el('adm-cal-status-badge');
+    const checkbox  = _el('adm-cal-enabled');
+    const calInput  = _el('adm-cal-id');
+
+    if (calStatus.enabled) {
+      badge.textContent = '● Enabled';
+      badge.style.cssText = 'background:var(--color-success-light);color:var(--color-success);font-weight:700;font-size:0.7rem;padding:2px 10px;border-radius:99px;';
+    } else {
+      badge.textContent = '○ Disabled';
+      badge.style.cssText = 'background:var(--color-surface-2);color:var(--color-text-muted);font-size:0.7rem;padding:2px 10px;border-radius:99px;';
+    }
+    if (checkbox) checkbox.checked = calStatus.enabled;
+    if (calInput) calInput.value   = calStatus.calendarID || '';
+  } catch (_) {}
+
+  _on('adm-cal-save-btn', 'click', async function() {
+    const btn       = _el('adm-cal-save-btn');
+    const enabled   = _el('adm-cal-enabled')?.checked || false;
+    const calendarID= (_el('adm-cal-id')?.value || '').trim();
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    try {
+      await window.api('setCalendarSettings', { enabled, calendarID });
+      const badge = _el('adm-cal-status-badge');
+      if (badge) {
+        badge.textContent = enabled ? '● Enabled' : '○ Disabled';
+        badge.style.cssText = enabled
+          ? 'background:var(--color-success-light);color:var(--color-success);font-weight:700;font-size:0.7rem;padding:2px 10px;border-radius:99px;'
+          : 'background:var(--color-surface-2);color:var(--color-text-muted);font-size:0.7rem;padding:2px 10px;border-radius:99px;';
+      }
+      window.ui?.toast('Calendar Settings Saved', enabled ? 'Sync enabled.' : 'Sync disabled.', 'success');
+    } catch (err) {
+      window.ui?.toast('Error', err.message, 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Save Settings'; }
+    }
+  });
+
+  _on('adm-cal-sync-btn', 'click', async function() {
+    const btn    = _el('adm-cal-sync-btn');
+    const result = _el('adm-cal-sync-result');
+    if (btn) { btn.disabled = true; btn.textContent = 'Syncing…'; }
+    if (result) result.textContent = '';
+    try {
+      const r = await window.api('syncCalendar', {});
+      const msg = `Done — Created: ${r.created} · Updated: ${r.updated} · Skipped: ${r.skipped} · Errors: ${r.errors} (of ${r.total} tasks)`;
+      if (result) result.textContent = msg;
+      window.ui?.toast('Calendar Sync Complete', msg, r.errors > 0 ? 'warning' : 'success', 6000);
+    } catch (err) {
+      window.ui?.toast('Sync Failed', err.message, 'error');
+      if (result) result.textContent = 'Sync failed: ' + err.message;
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg> Sync All Tasks Now'; }
+    }
+  });
+
+  // ── Load app settings ────────────────────────────────────────────────────
   try {
     _settings = await window.api('getSettings',{});
     _renderSettingsTable();
