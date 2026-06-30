@@ -2796,6 +2796,10 @@ ul, ol { list-style: none; }
           csrfToken:    result.csrfToken || '',
           ...result.user,
         };
+        // Normalize isSuperAdmin to boolean for consistent permission checks
+        if (sessionData.isSuperAdmin !== undefined) {
+          sessionData.isSuperAdmin = sessionData.isSuperAdmin === true || String(sessionData.isSuperAdmin).toUpperCase() === 'TRUE';
+        }
         store.session = sessionData;
         // sessionStorage only — never localStorage for auth tokens
         sessionStorage.setItem(CONFIG.SESSION_KEY, JSON.stringify(sessionData));
@@ -2820,6 +2824,7 @@ ul, ol { list-style: none; }
       /**
        * Hydrates session from sessionStorage on page load.
        * Validates the token against the server before granting access.
+       * Merges server response to ensure all session fields (esp. isSuperAdmin) are current.
        * @returns {Promise<boolean>} True if a valid session was restored.
        */
       async hydrate() {
@@ -2838,6 +2843,17 @@ ul, ol { list-style: none; }
             sessionStorage.removeItem('drishti_csrf_token');
             return false;
           }
+          // Merge server response back into session to ensure all fields are current
+          // (especially isSuperAdmin which is critical for permission checks)
+          // Note: validateSession returns string 'TRUE'/'FALSE', but we normalize to boolean
+          const isSuperAdmin = String(result.isSuperAdmin).toUpperCase() === 'TRUE';
+          store.session = Object.assign(store.session, {
+            userID: result.userID,
+            email: result.email,
+            role: result.role,
+            deptCode: result.deptCode,
+            isSuperAdmin: isSuperAdmin
+          });
           return true;
         } catch {
           store.session = null;
@@ -2863,7 +2879,8 @@ ul, ol { list-style: none; }
 
       /** Alias for common privilege check. */
       isPrivileged() {
-        return this.hasRole('Super Admin', 'Chief Secretary');
+        const s = store.session;
+        return (s && s.isSuperAdmin === true) || this.hasRole('Chief Secretary');
       },
     };
 
@@ -3055,7 +3072,7 @@ ul, ol { list-style: none; }
     function applyRoleGates() {
       if (!store.session) return;
       const role       = store.session.role;
-      const isAdmin    = role === 'Super Admin';
+      const isAdmin    = store.session.isSuperAdmin === true;
       const isCS       = role === 'Chief Secretary';
       const isDept     = role === 'Department';
       const isReadOnly = role === 'Read Only';
@@ -3613,7 +3630,7 @@ ul, ol { list-style: none; }
 
       // ── View-change event → load data ────────────────────────────────
       // NOTE: dashboard rendering is FULLY delegated to module scripts:
-      //   Super Admin  → admin.js (renderAdminDashboard)
+      //   TIGER  → admin.js (renderAdminDashboard)
       //   CS/ReadOnly  → dashboard.js (initDashboard)
       //   Department   → dept.js
       //   CSO Staff    → dashboard.js (initDashboard — same as CS)
@@ -3622,12 +3639,13 @@ ul, ol { list-style: none; }
         const { view } = e.detail;
         const _role    = store.session?.role;
         const _isDept  = _role === 'Department';
+        const _isAdmin = store.session?.isSuperAdmin === true;
 
         // Tasks: all non-dept roles use the tasks loader
         if (view === 'tasks' && !_isDept) loadTasks();
 
         // Departments: non-admin fallback shows read-only table
-        if (view === 'departments' && _role !== 'Super Admin') loadDepartments();
+        if (view === 'departments' && !_isAdmin) loadDepartments();
 
         // task-detail → redirect to review mode overlay
         if (view === 'task-detail' && e.detail.param) {
@@ -3643,7 +3661,8 @@ ul, ol { list-style: none; }
       // to handle that race without the user ever seeing "Access Denied".
       const _openTaskModal = function() {
         const role = store.session?.role;
-        const canCreate = ['Super Admin','Chief Secretary','Chief Secretary Office'].includes(role);
+        const isSuperAdmin = store.session?.isSuperAdmin === true;
+        const canCreate = isSuperAdmin || ['Chief Secretary','Chief Secretary Office'].includes(role);
         if (!canCreate) {
           ui.toast('Access Denied', 'Task creation requires Super Admin, Chief Secretary, or Chief Secretary Office role.', 'warning');
           return;
