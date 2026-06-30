@@ -2880,7 +2880,7 @@ ul, ol { list-style: none; }
       /** Alias for common privilege check. */
       isPrivileged() {
         const s = store.session;
-        return (s && s.isSuperAdmin === true) || this.hasRole('Chief Secretary');
+        return (s && (s.role === 'Super Admin' || s.isSuperAdmin === true)) || this.hasRole('Chief Secretary');
       },
     };
 
@@ -3072,7 +3072,7 @@ ul, ol { list-style: none; }
     function applyRoleGates() {
       if (!store.session) return;
       const role       = store.session.role;
-      const isAdmin    = store.session.isSuperAdmin === true;
+      const isAdmin    = role === 'Super Admin' || store.session.isSuperAdmin === true;
       const isCS       = role === 'Chief Secretary';
       const isDept     = role === 'Department';
       const isReadOnly = role === 'Read Only';
@@ -3639,7 +3639,7 @@ ul, ol { list-style: none; }
         const { view } = e.detail;
         const _role    = store.session?.role;
         const _isDept  = _role === 'Department';
-        const _isAdmin = store.session?.isSuperAdmin === true;
+        const _isAdmin = _role === 'Super Admin' || store.session?.isSuperAdmin === true;
 
         // Tasks: all non-dept roles use the tasks loader
         if (view === 'tasks' && !_isDept) loadTasks();
@@ -3661,8 +3661,8 @@ ul, ol { list-style: none; }
       // to handle that race without the user ever seeing "Access Denied".
       const _openTaskModal = function() {
         const role = store.session?.role;
-        const isSuperAdmin = store.session?.isSuperAdmin === true;
-        const canCreate = isSuperAdmin || ['Chief Secretary','Chief Secretary Office'].includes(role);
+        const isAdmin = role === 'Super Admin' || store.session?.isSuperAdmin === true;
+        const canCreate = isAdmin || ['Chief Secretary','Chief Secretary Office'].includes(role);
         if (!canCreate) {
           ui.toast('Access Denied', 'Task creation requires Super Admin, Chief Secretary, or Chief Secretary Office role.', 'warning');
           return;
