@@ -1329,7 +1329,7 @@ function _renderStatusControl() {
 
   const t       = _task;
   const role    = window.store?.session?.role;
-  const canEdit = ['Super Admin', 'Chief Secretary', 'Chief Secretary Office'].includes(role);
+  const canEdit = ['Tiger', 'Chief Secretary', 'Chief Secretary Office'].includes(role);
   const deptEdit = role === 'Department'; // can change progress only
 
   const STATUSES = [
@@ -1371,7 +1371,7 @@ function _renderStatusControl() {
       <span class="status-pill status-${current.toLowerCase()}" style="font-size:var(--font-sm);">
         ${_fmtStatus(current)}
       </span>
-      ${ !deptEdit ? '<div class="rv-status-readonly-note">Read-only — contact CS or Super Admin to change status.</div>' : '' }
+      ${ !deptEdit ? '<div class="rv-status-readonly-note">Read-only — contact CS or Tiger to change status.</div>' : '' }
     </div>
     `}
 
@@ -1544,7 +1544,7 @@ function _renderComments() {
 
   list.innerHTML = _comments.map((c, i) => {
     const isMine = c.AuthorID === myID ||
-                   ['Super Admin','Chief Secretary'].includes(c.AuthorRole);
+                   ['Tiger','Chief Secretary'].includes(c.AuthorRole);
     const side    = isMine ? 'mine' : 'theirs';
     const catCls  = _catClass(c.Category);
     const catIcon = _catIcon(c.Category);
@@ -1626,8 +1626,8 @@ function _renderNavBar() {
 
 function _updateQuickActions() {
   const role     = window.store?.session?.role;
-  const canEdit  = ['Super Admin', 'Chief Secretary', 'Chief Secretary Office'].includes(role);
-  const canPin   = ['Super Admin', 'Chief Secretary'].includes(role);
+  const canEdit  = ['Tiger', 'Chief Secretary', 'Chief Secretary Office'].includes(role);
+  const canPin   = ['Tiger', 'Chief Secretary'].includes(role);
   const isDept   = role === 'Department';
 
   // Pin/unpin label
@@ -2233,8 +2233,8 @@ function _syncThemeIcon() {
 async function _initReview(paramTaskID) {
   // Only CS and Admin may enter review mode
   const role = window.store?.session?.role;
-  if (!['Chief Secretary', 'Super Admin'].includes(role)) {
-    window.ui?.toast('Access Denied', 'Review Mode is for Chief Secretary and Super Admin only.', 'error');
+  if (!['Chief Secretary', 'Tiger'].includes(role)) {
+    window.ui?.toast('Access Denied', 'Review Mode is for Chief Secretary and Tiger only.', 'error');
     window.router?.navigate('dashboard');
     return;
   }

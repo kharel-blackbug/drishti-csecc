@@ -544,8 +544,8 @@ async function renderAnalyticsView() {
 
   // Role check
   const role = window.store?.session?.role;
-  if (!['Super Admin','Chief Secretary'].includes(role)) {
-    panel.innerHTML = `<div class="empty-state" style="padding:var(--space-12);"><div class="empty-state-title">Access Restricted</div><div class="empty-state-desc">Analytics is available to Chief Secretary and Super Admin only.</div></div>`;
+  if (!['Tiger','Chief Secretary'].includes(role)) {
+    panel.innerHTML = `<div class="empty-state" style="padding:var(--space-12);"><div class="empty-state-title">Access Restricted</div><div class="empty-state-desc">Analytics is available to Chief Secretary and Tiger only.</div></div>`;
     return;
   }
 
@@ -1398,8 +1398,8 @@ async function renderReportsView() {
   if (!panel) return;
 
   const role = window.store?.session?.role;
-  if (!['Super Admin','Chief Secretary'].includes(role)) {
-    panel.innerHTML = `<div class="empty-state" style="padding:var(--space-12);"><div class="empty-state-title">Access Restricted</div><div class="empty-state-desc">Reports are available to Chief Secretary and Super Admin only.</div></div>`;
+  if (!['Tiger','Chief Secretary'].includes(role)) {
+    panel.innerHTML = `<div class="empty-state" style="padding:var(--space-12);"><div class="empty-state-title">Access Restricted</div><div class="empty-state-desc">Reports are available to Chief Secretary and Tiger only.</div></div>`;
     return;
   }
 

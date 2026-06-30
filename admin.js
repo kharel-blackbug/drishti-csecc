@@ -3,7 +3,7 @@
  * File: admin.js
  *
  * Loaded by index.html as <script type="module" src="admin.js">.
- * Handles all UI for users with role === 'Super Admin'.
+ * Handles all UI for users with role === 'Tiger'.
  *
  * Views managed:
  *   #dashboard   — Admin Dashboard (KPIs, quick links, activity)
@@ -18,7 +18,7 @@
  *   - Each view injects its HTML into the corresponding #view-* panel
  *   - The task creation form is a full-screen modal overlay (not a separate panel)
  *   - All actions call window.api() and log to AuditLog via backend
- *   - Role guard: every render checks session.role === 'Super Admin'
+ *   - Role guard: every render checks session.role === 'Tiger'
  *
  * Dependencies (window globals from index.html showApp()):
  *   window.api(action, payload)
@@ -489,8 +489,8 @@ function injectAdminCSS() {
 /** Returns true and shows toast if user is NOT Super Admin */
 function _guardAdmin() {
   const role = window.store?.session?.role;
-  if (role !== 'Super Admin') {
-    window.ui?.toast('Access Denied', 'This area requires Super Admin role.', 'error');
+  if (role !== 'Tiger') {
+    window.ui?.toast('Access Denied', 'This area requires Tiger role.', 'error');
     window.router?.navigate('dashboard');
     return false;
   }
@@ -1196,7 +1196,7 @@ function _showFormError(msg) {
 function openCreateTaskModal() {
   // Allow Super Admin, Chief Secretary, and Staff to create tasks
   const role = window.store?.session?.role;
-  const canCreate = ['Super Admin','Chief Secretary','Chief Secretary Office'].includes(role);
+  const canCreate = ['Tiger','Chief Secretary','Chief Secretary Office'].includes(role);
   if (!canCreate) {
     window.ui?.toast('Access Denied', 'Task creation requires Super Admin, Chief Secretary, or Chief Secretary Office role.', 'error');
     return;
@@ -1241,7 +1241,7 @@ async function renderUsersView() {
       </div>
       <select class="select" id="adm-user-role-filter" style="width:160px;" aria-label="Filter by role">
         <option value="">All Roles</option>
-        <option>Super Admin</option>
+        <option>Tiger</option>
         <option>Chief Secretary</option>
         <option>Department</option>
         <option>Read Only</option>
@@ -1406,7 +1406,7 @@ function _injectUserModal() {
         <div class="form-group">
           <label class="form-label" for="adm-um-role">Role <span style="color:var(--color-danger)">*</span></label>
           <select class="select" id="adm-um-role" aria-required="true">
-            <option value="Super Admin">Super Admin</option>
+            <option value="Tiger">Tiger</option>
             <option value="Chief Secretary">Chief Secretary</option>
             <option value="Department" selected>Department</option>
             <option value="Read Only">Read Only</option>
@@ -1836,7 +1836,7 @@ function _injectBroadcastModal() {
           <option value="ALL">All Active Users</option>
           <option value="Chief Secretary">Chief Secretary</option>
           <option value="Department">All Department Officers</option>
-          <option value="Super Admin">Super Admins Only</option>
+          <option value="Tiger">Tiger Only</option>
           <option value="Read Only">Read Only Users</option>
         </select>
       </div>
@@ -2386,7 +2386,7 @@ function _animateCounter(el, from, to, dur) {
 document.addEventListener('drishti:viewchange', async (e) => {
   const { view } = e.detail;
   const role = window.store?.session?.role;
-  const isAdmin = role === 'Super Admin';
+  const isAdmin = role === 'Tiger';
   if (!isAdmin) return;
 
   if (view === 'dashboard')   await renderAdminDashboard();
@@ -2400,7 +2400,7 @@ document.addEventListener('drishti:viewchange', async (e) => {
 document.addEventListener('drishti:appready', () => {
   const hash = window.location.hash.replace('#','') || 'dashboard';
   const role = window.store?.session?.role;
-  if (role !== 'Super Admin') return;
+  if (role !== 'Tiger') return;
 
   if (hash === 'dashboard' || hash === '') renderAdminDashboard();
   if (hash === 'users')                    renderUsersView();

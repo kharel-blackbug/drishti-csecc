@@ -1500,7 +1500,7 @@ function injectSpeedDial() {
   if (document.getElementById('db-speed-dial')) return;
 
   const items = [
-    { label: 'New Task',       icon: '＋', action: () => { if (typeof window.openCreateTaskModal === 'function') window.openCreateTaskModal(); else window.ui?.toast('Access Denied', 'Task creation requires Super Admin or Chief Secretary role.', 'warning'); } },
+    { label: 'New Task',       icon: '＋', action: () => { if (typeof window.openCreateTaskModal === 'function') window.openCreateTaskModal(); else window.ui?.toast('Access Denied', 'Task creation requires Tiger or Chief Secretary role.', 'warning'); } },
     { label: 'Generate Report',icon: '📄', action: () => window.router?.navigate('reports') },
     { label: 'AI Brief',       icon: '✦',  action: () => { document.getElementById('db-gen-brief-btn')?.click(); } },
     { label: 'Review Mode',    icon: '🔍', action: () => window.router?.navigate('review') },
@@ -1748,7 +1748,7 @@ function _wireDashboardEvents() {
 
   document.getElementById('db-new-task-btn')?.addEventListener('click', () => {
     if (typeof window.openCreateTaskModal === 'function') window.openCreateTaskModal();
-    else window.ui?.toast('Access Denied', 'Task creation requires Super Admin or Chief Secretary role.', 'warning');
+    else window.ui?.toast('Access Denied', 'Task creation requires Tiger or Chief Secretary role.', 'warning');
   });
 
   document.getElementById('db-view-all-pinned')?.addEventListener('click', () => {
@@ -1923,7 +1923,7 @@ document.addEventListener('drishti:viewchange', (e) => {
 document.addEventListener('drishti:appready', () => {
   const hash = window.location.hash.replace('#','') || 'dashboard';
   const role = window.store?.session?.role;
-  const isAdmin = role === 'Super Admin';
+  const isAdmin = role === 'Tiger';
   const isDept  = role === 'Department';
   // Dashboard.js renders for CS, ReadOnly, Staff, and any other non-admin/non-dept role
   if ((hash === 'dashboard' || hash === '') && !isAdmin && !isDept) {
