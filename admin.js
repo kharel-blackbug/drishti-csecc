@@ -3,7 +3,7 @@
  * File: admin.js
  *
  * Loaded by index.html as <script type="module" src="admin.js">.
- * Handles all UI for users with role === 'Tiger'.
+ * Handles all UI for users with isSuperAdmin === true.
  *
  * Views managed:
  *   #dashboard   — Admin Dashboard (KPIs, quick links, activity)
@@ -18,7 +18,7 @@
  *   - Each view injects its HTML into the corresponding #view-* panel
  *   - The task creation form is a full-screen modal overlay (not a separate panel)
  *   - All actions call window.api() and log to AuditLog via backend
- *   - Role guard: every render checks session.role === 'Tiger'
+ *   - Role guard: every render checks window.store?.session?.isSuperAdmin === true
  *
  * Dependencies (window globals from index.html showApp()):
  *   window.api(action, payload)
@@ -488,9 +488,9 @@ function injectAdminCSS() {
 
 /** Returns true and shows toast if user is NOT Super Admin */
 function _guardAdmin() {
-  const role = window.store?.session?.role;
-  if (role !== 'Tiger') {
-    window.ui?.toast('Access Denied', 'This area requires Tiger role.', 'error');
+  const isSuperAdmin = window.store?.session?.isSuperAdmin;
+  if (!isSuperAdmin) {
+    window.ui?.toast('Access Denied', 'This area is restricted to super admins.', 'error');
     window.router?.navigate('dashboard');
     return false;
   }
@@ -1195,8 +1195,9 @@ function _showFormError(msg) {
 
 function openCreateTaskModal() {
   // Allow Super Admin, Chief Secretary, and Staff to create tasks
+  const isSuperAdmin = window.store?.session?.isSuperAdmin;
   const role = window.store?.session?.role;
-  const canCreate = ['Tiger','Chief Secretary','Chief Secretary Office'].includes(role);
+  const canCreate = isSuperAdmin || ['Chief Secretary','Chief Secretary Office'].includes(role);
   if (!canCreate) {
     window.ui?.toast('Access Denied', 'Task creation requires Super Admin, Chief Secretary, or Chief Secretary Office role.', 'error');
     return;
@@ -1406,7 +1407,7 @@ function _injectUserModal() {
         <div class="form-group">
           <label class="form-label" for="adm-um-role">Role <span style="color:var(--color-danger)">*</span></label>
           <select class="select" id="adm-um-role" aria-required="true">
-            <option value="Tiger">Tiger</option>
+            <option value="Chief Secretary">Chief Secretary</option>
             <option value="Chief Secretary">Chief Secretary</option>
             <option value="Department" selected>Department</option>
             <option value="Read Only">Read Only</option>
@@ -1836,7 +1837,7 @@ function _injectBroadcastModal() {
           <option value="ALL">All Active Users</option>
           <option value="Chief Secretary">Chief Secretary</option>
           <option value="Department">All Department Officers</option>
-          <option value="Tiger">Tiger Only</option>
+          <option value="">Super Admins Only</option>
           <option value="Read Only">Read Only Users</option>
         </select>
       </div>
@@ -2385,9 +2386,8 @@ function _animateCounter(el, from, to, dur) {
 
 document.addEventListener('drishti:viewchange', async (e) => {
   const { view } = e.detail;
-  const role = window.store?.session?.role;
-  const isAdmin = role === 'Tiger';
-  if (!isAdmin) return;
+  const isSuperAdmin = window.store?.session?.isSuperAdmin;
+  if (!isSuperAdmin) return;
 
   if (view === 'dashboard')   await renderAdminDashboard();
   if (view === 'users')       await renderUsersView();
@@ -2399,8 +2399,8 @@ document.addEventListener('drishti:viewchange', async (e) => {
 
 document.addEventListener('drishti:appready', () => {
   const hash = window.location.hash.replace('#','') || 'dashboard';
-  const role = window.store?.session?.role;
-  if (role !== 'Tiger') return;
+  const isSuperAdmin = window.store?.session?.isSuperAdmin;
+  if (!isSuperAdmin) return;
 
   if (hash === 'dashboard' || hash === '') renderAdminDashboard();
   if (hash === 'users')                    renderUsersView();

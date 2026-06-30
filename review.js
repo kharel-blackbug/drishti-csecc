@@ -1328,8 +1328,9 @@ function _renderStatusControl() {
   if (!el) return;
 
   const t       = _task;
+  const isSuperAdmin = window.store?.session?.isSuperAdmin;
   const role    = window.store?.session?.role;
-  const canEdit = ['Tiger', 'Chief Secretary', 'Chief Secretary Office'].includes(role);
+  const canEdit = isSuperAdmin || ['Chief Secretary', 'Chief Secretary Office'].includes(role);
   const deptEdit = role === 'Department'; // can change progress only
 
   const STATUSES = [
@@ -1544,7 +1545,7 @@ function _renderComments() {
 
   list.innerHTML = _comments.map((c, i) => {
     const isMine = c.AuthorID === myID ||
-                   ['Tiger','Chief Secretary'].includes(c.AuthorRole);
+                   c.AuthorRole === 'Chief Secretary';
     const side    = isMine ? 'mine' : 'theirs';
     const catCls  = _catClass(c.Category);
     const catIcon = _catIcon(c.Category);
@@ -1625,9 +1626,10 @@ function _renderNavBar() {
 }
 
 function _updateQuickActions() {
+  const isSuperAdmin = window.store?.session?.isSuperAdmin;
   const role     = window.store?.session?.role;
-  const canEdit  = ['Tiger', 'Chief Secretary', 'Chief Secretary Office'].includes(role);
-  const canPin   = ['Tiger', 'Chief Secretary'].includes(role);
+  const canEdit  = isSuperAdmin || ['Chief Secretary', 'Chief Secretary Office'].includes(role);
+  const canPin   = isSuperAdmin || role === 'Chief Secretary';
   const isDept   = role === 'Department';
 
   // Pin/unpin label
@@ -2232,9 +2234,10 @@ function _syncThemeIcon() {
  */
 async function _initReview(paramTaskID) {
   // Only CS and Admin may enter review mode
+  const isSuperAdmin = window.store?.session?.isSuperAdmin;
   const role = window.store?.session?.role;
-  if (!['Chief Secretary', 'Tiger'].includes(role)) {
-    window.ui?.toast('Access Denied', 'Review Mode is for Chief Secretary and Tiger only.', 'error');
+  if (!isSuperAdmin && role !== 'Chief Secretary') {
+    window.ui?.toast('Access Denied', 'Review Mode is for Chief Secretary and Super Admins only.', 'error');
     window.router?.navigate('dashboard');
     return;
   }

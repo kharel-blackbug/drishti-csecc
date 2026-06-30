@@ -1922,11 +1922,10 @@ document.addEventListener('drishti:viewchange', (e) => {
  */
 document.addEventListener('drishti:appready', () => {
   const hash = window.location.hash.replace('#','') || 'dashboard';
-  const role = window.store?.session?.role;
-  const isAdmin = role === 'Tiger';
+  const isSuperAdmin = window.store?.session?.isSuperAdmin;
   const isDept  = role === 'Department';
   // Dashboard.js renders for CS, ReadOnly, Staff, and any other non-admin/non-dept role
-  if ((hash === 'dashboard' || hash === '') && !isAdmin && !isDept) {
+  if ((hash === 'dashboard' || hash === '') && !isSuperAdmin && !isDept) {
     initDashboard();
   }
 });
