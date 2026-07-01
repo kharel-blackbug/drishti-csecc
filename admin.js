@@ -1203,6 +1203,8 @@ function openCreateTaskModal() {
     window.ui?.toast('Access Denied', 'Task creation requires Super Admin, Chief Secretary, or Chief Secretary Office role.', 'error');
     return;
   }
+  // Ensure admin CSS is loaded (critical for modal rendering)
+  injectAdminCSS();
   _injectCreateTaskModal();
   _resetCreateForm();
   _el('adm-create-success').style.display   = 'none';

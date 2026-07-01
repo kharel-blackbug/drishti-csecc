@@ -3642,11 +3642,10 @@ ul, ol { list-style: none; }
       document.addEventListener('drishti:viewchange', async (e) => {
         const { view } = e.detail;
         const _role    = store.session?.role;
-        const _isDept  = _role === 'Department';
         const _isAdmin = _role === 'Super Admin' || store.session?.isSuperAdmin === true;
 
-        // Tasks: all non-dept roles use the tasks loader
-        if (view === 'tasks' && !_isDept) loadTasks();
+        // Tasks: load for all roles (getTasks API handles role-based filtering)
+        if (view === 'tasks') loadTasks();
 
         // Departments: non-admin fallback shows read-only table
         if (view === 'departments' && !_isAdmin) loadDepartments();
