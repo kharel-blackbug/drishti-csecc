@@ -934,9 +934,9 @@ function renderAIView() {
   _loadHistory();
 
   // Check role — AI is for CS and Admin only
-  const isSuperAdmin = window.store?.session?.isSuperAdmin;
   const role = window.store?.session?.role;
-  if (!isSuperAdmin && role !== 'Chief Secretary') {
+  const isAdmin = role === 'Super Admin' || window.store?.session?.isSuperAdmin === true;
+  if (!isAdmin && role !== 'Chief Secretary') {
     panel.innerHTML = `
     <div class="empty-state" style="padding:var(--space-12);">
       <div class="empty-state-icon">

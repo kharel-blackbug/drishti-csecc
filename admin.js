@@ -488,7 +488,8 @@ function injectAdminCSS() {
 
 /** Returns true and shows toast if user is NOT Super Admin */
 function _guardAdmin() {
-  const isSuperAdmin = window.store?.session?.isSuperAdmin;
+  const role = window.store?.session?.role;
+  const isSuperAdmin = role === 'Super Admin' || window.store?.session?.isSuperAdmin === true;
   if (!isSuperAdmin) {
     window.ui?.toast('Access Denied', 'This area is restricted to super admins.', 'error');
     window.router?.navigate('dashboard');
@@ -1195,9 +1196,9 @@ function _showFormError(msg) {
 
 function openCreateTaskModal() {
   // Allow Super Admin, Chief Secretary, and Staff to create tasks
-  const isSuperAdmin = window.store?.session?.isSuperAdmin;
   const role = window.store?.session?.role;
-  const canCreate = isSuperAdmin || ['Chief Secretary','Chief Secretary Office'].includes(role);
+  const isAdmin = role === 'Super Admin' || window.store?.session?.isSuperAdmin === true;
+  const canCreate = isAdmin || ['Chief Secretary','Chief Secretary Office'].includes(role);
   if (!canCreate) {
     window.ui?.toast('Access Denied', 'Task creation requires Super Admin, Chief Secretary, or Chief Secretary Office role.', 'error');
     return;
@@ -2386,8 +2387,9 @@ function _animateCounter(el, from, to, dur) {
 
 document.addEventListener('drishti:viewchange', async (e) => {
   const { view } = e.detail;
-  const isSuperAdmin = window.store?.session?.isSuperAdmin;
-  if (!isSuperAdmin) return;
+  const role = window.store?.session?.role;
+  const isAdmin = role === 'Super Admin' || window.store?.session?.isSuperAdmin === true;
+  if (!isAdmin) return;
 
   if (view === 'dashboard')   await renderAdminDashboard();
   if (view === 'users')       await renderUsersView();

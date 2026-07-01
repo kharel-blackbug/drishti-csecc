@@ -543,9 +543,9 @@ async function renderAnalyticsView() {
   if (!panel) return;
 
   // Role check
-  const isSuperAdmin = window.store?.session?.isSuperAdmin;
   const role = window.store?.session?.role;
-  if (!isSuperAdmin && role !== 'Chief Secretary') {
+  const isAdmin = role === 'Super Admin' || window.store?.session?.isSuperAdmin === true;
+  if (!isAdmin && role !== 'Chief Secretary') {
     panel.innerHTML = `<div class="empty-state" style="padding:var(--space-12);"><div class="empty-state-title">Access Restricted</div><div class="empty-state-desc">Analytics is available to Chief Secretary and Super Admins only.</div></div>`;
     return;
   }
@@ -1398,9 +1398,9 @@ async function renderReportsView() {
   const panel = document.getElementById('view-reports');
   if (!panel) return;
 
-  const isSuperAdmin = window.store?.session?.isSuperAdmin;
   const role = window.store?.session?.role;
-  if (!isSuperAdmin && role !== 'Chief Secretary') {
+  const isAdmin = role === 'Super Admin' || window.store?.session?.isSuperAdmin === true;
+  if (!isAdmin && role !== 'Chief Secretary') {
     panel.innerHTML = `<div class="empty-state" style="padding:var(--space-12);"><div class="empty-state-title">Access Restricted</div><div class="empty-state-desc">Reports are available to Chief Secretary and Super Admins only.</div></div>`;
     return;
   }

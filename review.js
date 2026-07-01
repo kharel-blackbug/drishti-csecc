@@ -1328,9 +1328,9 @@ function _renderStatusControl() {
   if (!el) return;
 
   const t       = _task;
-  const isSuperAdmin = window.store?.session?.isSuperAdmin;
   const role    = window.store?.session?.role;
-  const canEdit = isSuperAdmin || ['Chief Secretary', 'Chief Secretary Office'].includes(role);
+  const isAdmin = role === 'Super Admin' || window.store?.session?.isSuperAdmin === true;
+  const canEdit = isAdmin || ['Chief Secretary', 'Chief Secretary Office'].includes(role);
   const deptEdit = role === 'Department'; // can change progress only
 
   const STATUSES = [
@@ -1626,10 +1626,10 @@ function _renderNavBar() {
 }
 
 function _updateQuickActions() {
-  const isSuperAdmin = window.store?.session?.isSuperAdmin;
   const role     = window.store?.session?.role;
-  const canEdit  = isSuperAdmin || ['Chief Secretary', 'Chief Secretary Office'].includes(role);
-  const canPin   = isSuperAdmin || role === 'Chief Secretary';
+  const isAdmin  = role === 'Super Admin' || window.store?.session?.isSuperAdmin === true;
+  const canEdit  = isAdmin || ['Chief Secretary', 'Chief Secretary Office'].includes(role);
+  const canPin   = isAdmin || role === 'Chief Secretary';
   const isDept   = role === 'Department';
 
   // Pin/unpin label
@@ -2234,9 +2234,9 @@ function _syncThemeIcon() {
  */
 async function _initReview(paramTaskID) {
   // Only CS and Admin may enter review mode
-  const isSuperAdmin = window.store?.session?.isSuperAdmin;
   const role = window.store?.session?.role;
-  if (!isSuperAdmin && role !== 'Chief Secretary') {
+  const isAdmin = role === 'Super Admin' || window.store?.session?.isSuperAdmin === true;
+  if (!isAdmin && role !== 'Chief Secretary') {
     window.ui?.toast('Access Denied', 'Review Mode is for Chief Secretary and Super Admins only.', 'error');
     window.router?.navigate('dashboard');
     return;
