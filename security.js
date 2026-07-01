@@ -886,14 +886,19 @@ function installAuthPatches() {
 
   /**
    * Patched logout — clears CSRF, stops heartbeat, wipes all caches.
+   * Must call originalLogout BEFORE clearing CSRF so the logout API call succeeds.
    * @param {boolean} [silent]
    */
   window.auth.logout = async function(silent) {
     stopSessionHeartbeat();
-    clearCSRFToken();
-    clearAllAPICache();
-    clearCaptchaUI();
-    return originalLogout(silent);
+    try {
+      return await originalLogout(silent);
+    } finally {
+      // Clear CSRF token AFTER logout completes (or fails)
+      clearCSRFToken();
+      clearAllAPICache();
+      clearCaptchaUI();
+    }
   };
 
   console.info('[DRISHTI][SECURITY] Auth patches installed.');

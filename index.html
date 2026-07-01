@@ -2791,6 +2791,10 @@ ul, ol { list-style: none; }
           }
           throw new Error(result?.message || 'Login failed.');
         }
+        // Clear all old session data before setting new session
+        sessionStorage.removeItem(CONFIG.SESSION_KEY);
+        sessionStorage.removeItem('drishti_csrf_token');
+
         const sessionData = {
           sessionToken: result.sessionToken,
           csrfToken:    result.csrfToken || '',
