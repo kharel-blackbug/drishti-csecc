@@ -504,7 +504,12 @@ function _guardAdmin() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 async function renderAdminDashboard() {
-  if (!_guardAdmin()) return;
+  if (!_guardAdmin()) {
+    // Ensure panel is empty for non-admin users
+    const panel = document.getElementById('view-dashboard');
+    if (panel) panel.innerHTML = '';
+    return;
+  }
   injectAdminCSS();
 
   const panel = document.getElementById('view-dashboard');
@@ -1227,7 +1232,11 @@ window.openCreateTaskModal = openCreateTaskModal;
 // ═════════════════════════════════════════════════════════════════════════════
 
 async function renderUsersView() {
-  if (!_guardAdmin()) return;
+  if (!_guardAdmin()) {
+    const panel = document.getElementById('view-users');
+    if (panel) panel.innerHTML = '';
+    return;
+  }
   injectAdminCSS();
   const panel = document.getElementById('view-users');
   if (!panel) return;
@@ -1677,7 +1686,11 @@ function openAddDeptModal() {
 window.openAddDeptModal = openAddDeptModal;
 
 async function renderDepartmentsView() {
-  if (!_guardAdmin()) return;
+  if (!_guardAdmin()) {
+    const panel = document.getElementById('view-departments');
+    if (panel) panel.innerHTML = '';
+    return;
+  }
   injectAdminCSS();
   const panel = document.getElementById('view-departments');
   if (!panel) return;
@@ -1918,7 +1931,11 @@ window.openBroadcastModal = openBroadcastModal;
 // ═════════════════════════════════════════════════════════════════════════════
 
 async function renderAuditView() {
-  if (!_guardAdmin()) return;
+  if (!_guardAdmin()) {
+    const panel = document.getElementById('view-audit');
+    if (panel) panel.innerHTML = '';
+    return;
+  }
   injectAdminCSS();
   const panel = document.getElementById('view-audit');
   if (!panel) return;
@@ -2120,7 +2137,11 @@ function _exportAuditCSV() {
 // ═════════════════════════════════════════════════════════════════════════════
 
 async function renderSettingsView() {
-  if (!_guardAdmin()) return;
+  if (!_guardAdmin()) {
+    const panel = document.getElementById('view-settings');
+    if (panel) panel.innerHTML = '';
+    return;
+  }
   injectAdminCSS();
   const panel = document.getElementById('view-settings');
   if (!panel) return;
