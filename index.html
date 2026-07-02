@@ -3326,6 +3326,11 @@ ul, ol { list-style: none; }
         item.classList.remove('hidden');  // restore visibility for next user's role gates
       });
 
+      // Hide all privileged UI elements (buttons, menus, etc.)
+      document.querySelectorAll('.nav-privileged, .nav-admin-only, .nav-cs-only').forEach(function(el) {
+        el.classList.add('hidden');
+      });
+
       // Clear login form inputs and errors
       const emailEl = document.getElementById('login-email');
       const passEl = document.getElementById('login-password');
