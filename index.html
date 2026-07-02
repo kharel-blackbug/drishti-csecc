@@ -3326,6 +3326,25 @@ ul, ol { list-style: none; }
         item.classList.remove('hidden');  // restore visibility for next user's role gates
       });
 
+      // Clear login form inputs and errors
+      const emailEl = document.getElementById('login-email');
+      const passEl = document.getElementById('login-password');
+      if (emailEl) emailEl.value = '';
+      if (passEl) passEl.value = '';
+      // Clear any login error messages
+      document.querySelectorAll('.login-error').forEach(function(el) {
+        el.textContent = '';
+        el.classList.remove('visible');
+      });
+
+      // Hide loading screen if visible
+      const loadingScreen = document.getElementById('loading-screen');
+      if (loadingScreen) loadingScreen.classList.add('hidden');
+
+      // Clear all toast notifications
+      const toastContainer = document.getElementById('toast-container');
+      if (toastContainer) toastContainer.innerHTML = '';
+
       // Clear module-level caches: admin.js, dashboard.js, analytics.js, review.js
       if (typeof window.resetAdminState === 'function')     window.resetAdminState();
       if (typeof window.resetDashboardState === 'function') window.resetDashboardState();
@@ -3343,6 +3362,10 @@ ul, ol { list-style: none; }
 
       // Clear session store
       store.session = null;
+      store.currentView = 'dashboard';
+
+      // Reset router hash to prevent stale route on next login
+      window.location.hash = '';
     }
 
     function showApp(goToDashboard = false) {
